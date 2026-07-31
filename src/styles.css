@@ -1,0 +1,994 @@
+
+    /* ═══════════════════════════════════════════════════════════════
+       GLOBAL RESET
+       Removes default margins/padding from ALL elements (*)
+       and uses border-box sizing so padding doesn't add to width.
+       ═══════════════════════════════════════════════════════════════ */
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+    /* ═══════════════════════════════════════════════════════════════
+       CSS CUSTOM PROPERTIES (VARIABLES) — DARK THEME (:root)
+       Everything here uses --variable-name so we can swap themes easily.
+       ═══════════════════════════════════════════════════════════════ */
+    :root {
+      --bg-body: #111318;           /* Dark background */
+      --bg-calc: #1b1d23;           /* Calculator body */
+      --bg-display: #14151a;        /* Expression/result display area */
+      --text-primary: #e8e9ed;      /* Main text color */
+      --text-secondary: #a0a3ae;    /* Secondary text */
+      --text-muted: #5c5f6e;        /* Muted/hint text */
+      --text-dim: #3d4050;          /* Very dim text (placeholders) */
+      --border: rgba(255,255,255,0.06);  /* Subtle borders */
+      /* Number buttons */
+      --btn-num-bg: #2d2f36;
+      --btn-num-hover: #3a3c44;
+      --btn-num-text: #e8e9ed;
+      /* Operation buttons (+, -, ×, ÷) */
+      --btn-op-text: #58a6ff;
+      --btn-op-bg: #1d2a3a;
+      --btn-op-hover: #253349;
+      /* Equals button */
+      --btn-eq-bg: #1f6feb;
+      --btn-eq-hover: #3584f0;
+      --btn-eq-text: #ffffff;
+      /* Function buttons (sin, cos, log, etc.) */
+      --btn-func-text: #d29922;
+      --btn-func-bg: #24262d;
+      --btn-func-hover: #2d2f38;
+      /* Delete / Clear button */
+      --btn-del-text: #f85149;
+      /* Special constants (π, e, etc.) */
+      --btn-special-text: #56d364;
+      /* Mode tabs */
+      --tab-text: #6e7383;
+      --tab-active-text: #e8e9ed;
+      --tab-active-bg: #2d2f36;
+      --tab-indicator: #1f6feb;
+      /* History panel */
+      --history-text: #5c5f6e;
+      --history-border: rgba(255,255,255,0.05);
+      /* Chip/toggle buttons */
+      --chip-bg: #24262d;
+      --chip-text: #6e7383;
+      --chip-active-bg: #1d2a3a;
+      --chip-active-text: #58a6ff;
+      --err-color: #f85149;             /* Error text color */
+      --expr-color: #a0a3ae;           /* Expression text color */
+      /* Precision/formatting controls */
+      --prec-bg: #1e2028;
+      --prec-border: #333642;
+      --prec-hover: #2a2d38;
+      --dropdown-bg: #252830;
+      --dropdown-text: #c8cbd6;
+      --dropdown-hover: #323642;
+      /* Editor inputs */
+      --caret-color: #58a6ff;          /* Blinking cursor color */
+      --ph-color: rgba(88,166,255,0.5); /* Placeholder/ghost indicator */
+      /* Graph canvas */
+      --canvas-bg: #0d0e12;
+      --canvas-grid: rgba(255,255,255,0.06);
+      --canvas-axis: rgba(255,255,255,0.2);
+      --expr-item-bg: #1a1c23;
+      --expr-item-border: #2a2d36;
+      --graph-line: #58a6ff;           /* Default graph line color */
+      /* FreeCalc-style 4-Function colors (dark) */
+      --freecalc-key-bg: #2a2e36;
+      --freecalc-key-hover: #363b45;
+      --freecalc-key-text: #e8e9ed;
+      --freecalc-op-bg: #343b48;
+      --freecalc-op-hover: #414b5c;
+      --freecalc-op-text: #9cc3ff;
+      --freecalc-fn-bg: #262a31;
+      --freecalc-fn-hover: #33373f;
+      --freecalc-fn-text: #c8cbd6;
+      --freecalc-del-text: #f85149;
+      --freecalc-eq-bg: #2d70b3;
+      --freecalc-eq-hover: #3a82c7;
+      --freecalc-result: #58a6ff;        /* Live result text color */
+      --freecalc-display-bg: #14151a;
+      --freecalc-display-border: rgba(255,255,255,0.08);
+    }
+
+    /* ═══════════════════════════════════════════════════════════════
+       LIGHT THEME OVERRIDES
+       When [data-theme="light"] is set on the <html> or parent element.
+       Overrides all the CSS variables with lighter colors.
+       ═══════════════════════════════════════════════════════════════ */
+    [data-theme="light"] {
+      --bg-body: #f5f5f5;
+      --bg-calc: #ffffff;
+      --bg-display: #f0f0f0;
+      --text-primary: #1d1d1d;
+      --text-secondary: #5e5e5e;
+      --text-muted: #9e9e9e;
+      --text-dim: #bdbdbd;
+      --border: rgba(0,0,0,0.08);
+      --btn-num-bg: #e8e8e8;
+      --btn-num-hover: #dcdcdc;
+      --btn-num-text: #1d1d1d;
+      --btn-op-text: #1a73e8;
+      --btn-op-bg: #e8f0fe;
+      --btn-op-hover: #d2e3fc;
+      --btn-eq-bg: #1a73e8;
+      --btn-eq-hover: #1557b0;
+      --btn-eq-text: #ffffff;
+      --btn-func-text: #b8860b;
+      --btn-func-bg: #f5f5f5;
+      --btn-func-hover: #ebebeb;
+      --btn-del-text: #d32f2f;
+      --btn-special-text: #2e7d32;
+      --tab-text: #9e9e9e;
+      --tab-active-text: #1d1d1d;
+      --tab-active-bg: #e8e8e8;
+      --tab-indicator: #1a73e8;
+      --history-text: #9e9e9e;
+      --history-border: rgba(0,0,0,0.06);
+      --chip-bg: #f0f0f0;
+      --chip-text: #9e9e9e;
+      --chip-active-bg: #e8f0fe;
+      --chip-active-text: #1a73e8;
+      --err-color: #d32f2f;
+      --expr-color: #5e5e5e;
+      --prec-bg: #eaeaea;
+      --prec-border: #ccc;
+      --prec-hover: #ddd;
+      --dropdown-bg: #f5f5f5;
+      --dropdown-text: #333;
+      --dropdown-hover: #e0e0e0;
+      --caret-color: #1a73e8;
+      --ph-color: rgba(26,115,232,0.4);
+      --canvas-bg: #fafafa;
+      --canvas-grid: rgba(0,0,0,0.08);
+      --canvas-axis: rgba(0,0,0,0.25);
+      --expr-item-bg: #f8f8fb;
+      --expr-item-border: #e8e8ec;
+      --graph-line: #1a73e8;
+      /* FreeCalc-style 4-Function colors (light) */
+      --freecalc-key-bg: #f4f4f4;
+      --freecalc-key-hover: #e7e7e7;
+      --freecalc-key-text: #1d1d1d;
+      --freecalc-op-bg: #e8e8e8;
+      --freecalc-op-hover: #dcdcdc;
+      --freecalc-op-text: #1d1d1d;
+      --freecalc-fn-bg: #fafafa;
+      --freecalc-fn-hover: #ededed;
+      --freecalc-fn-text: #444;
+      --freecalc-del-text: #d64541;
+      --freecalc-eq-bg: #2d70b3;
+      --freecalc-eq-hover: #245c94;
+      --freecalc-result: #2d70b3;        /* Live result text color */
+      --freecalc-display-bg: #ffffff;
+      --freecalc-display-border: rgba(0,0,0,0.08);
+    }
+
+    /* ═══════════════════════════════════════════════════════════════
+       BODY — Full-viewport centered layout
+       Uses flexbox to center the calculator card on screen.
+       ═══════════════════════════════════════════════════════════════ */
+    body {
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: var(--bg-body);       /* Uses theme variable */
+      padding: 1rem;
+      transition: background 0.25s ease; /* Smooth theme switching */
+    }
+
+    /* ═══════════════════════════════════════════════════════════════
+       MAIN CALCULATOR CONTAINER (.calc)
+       The card that holds everything.
+       ═══════════════════════════════════════════════════════════════ */
+    .calc {
+      background: var(--bg-calc);
+      border-radius: 20px;
+      padding: 1.5rem 1.25rem 1.25rem;
+      max-width: 520px;
+      width: 100%;
+      box-shadow: 0 0 0 0 transparent;
+      border: 1px solid var(--border);
+      transition: background 0.25s ease, border-color 0.25s ease;
+    }
+
+    /* Header row with brand name and control buttons */
+    .calc-brand {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 0.5rem; padding: 0 0.1rem;
+    }
+    .calc-brand .name {
+      font-size: 0.75rem; font-weight: 700; color: var(--text-muted);
+      text-transform: uppercase; letter-spacing: 0.08em;
+    }
+    .calc-brand .controls { display: flex; gap: 0.4rem; align-items: center; flex-wrap: wrap; }
+
+    /* ─── Mode Tabs (4-Function | Scientific | Graphing) ─── */
+    .mode-tabs {
+      display: flex; gap: 0.15rem; margin-bottom: 0.5rem;
+      border-bottom: 1px solid var(--border); padding-bottom: 0;
+    }
+    .mode-tab {
+      flex: 1; padding: 0.4rem 0.3rem 0.45rem; font-size: 0.72rem; font-weight: 600;
+      text-align: center; cursor: pointer; border: none; border-radius: 6px 6px 0 0;
+      background: transparent; color: var(--tab-text);
+      font-family: inherit; transition: all 0.2s ease; user-select: none;
+      position: relative;
+    }
+    .mode-tab:hover { color: var(--tab-active-text); background: var(--tab-active-bg); }
+    .mode-tab.active { color: var(--tab-active-text); background: var(--tab-active-bg); }
+    /* Blue underline indicator on the active tab */
+    .mode-tab.active::after {
+      content: ''; position: absolute; bottom: 0; left: 15%; right: 15%;
+      height: 2px; background: var(--tab-indicator); border-radius: 1px;
+    }
+
+    /* Small pill/chip buttons (e.g. "RAD", "DEG", theme toggle) */
+    .chip {
+      display: inline-block;  /* So transforms (spin) work reliably on the theme toggle */
+      font-size: 0.6rem; font-weight: 700; padding: 0.2rem 0.55rem; border-radius: 4px;
+      border: 1px solid var(--border); cursor: pointer; transition: all 0.2s ease;
+      user-select: none; background: var(--chip-bg); color: var(--chip-text);
+      font-family: inherit;
+    }
+    .chip:hover { filter: brightness(1.15); }
+    .chip.active { background: var(--chip-active-bg); color: var(--chip-active-text); border-color: var(--chip-active-text); }
+
+    /* Precision dropdown (Auto, Fix 0-8, Sci, Eng) */
+    .precision-wrap { position: relative; display: inline-block; }
+    .precision-btn {
+      font-size: 0.6rem; font-weight: 700; padding: 0.2rem 0.55rem; border-radius: 4px;
+      border: 1px solid var(--prec-border); cursor: pointer; transition: all 0.2s ease;
+      user-select: none; background: var(--prec-bg); color: var(--chip-text);
+      font-family: inherit; display: flex; align-items: center; gap: 3px;
+    }
+    .precision-btn:hover { background: var(--prec-hover); }
+    .precision-btn .arrow { font-size: 0.45rem; opacity: 0.6; }
+    /* The dropdown menu that appears when clicking precision */
+    .precision-dropdown {
+      display: none; position: absolute; top: 100%; right: 0; margin-top: 3px;
+      background: var(--dropdown-bg); border: 1px solid var(--prec-border);
+      border-radius: 8px; min-width: 130px; z-index: 100;
+      box-shadow: 0 6px 20px rgba(0,0,0,0.4); overflow: hidden;
+    }
+    .precision-dropdown.open { display: block; }
+
+    /* ─── Display Area (shows expression + result) ─── */
+    .display {
+      background: var(--bg-display); border: 1px solid var(--border);
+      border-radius: 12px; padding: 0.5rem 1rem 0.4rem; margin-bottom: 0.6rem;
+      min-height: 5rem; display: flex; flex-direction: column;
+      overflow: hidden; transition: background 0.25s ease, border-color 0.25s ease;
+      cursor: text; position: relative;
+    }
+    .display.err { border-color: var(--err-color); box-shadow: 0 0 0 1px var(--err-color); }
+
+    /* History section — shows previous calculations above the current one */
+    .display-history {
+      flex: 1; overflow-y: auto; max-height: 2.8rem; min-height: 0;
+      scrollbar-width: thin; scrollbar-color: var(--border) transparent;
+      margin-bottom: 0.15rem; padding-bottom: 0.1rem;
+      border-bottom: 1px solid var(--history-border);
+    }
+    .display-history::-webkit-scrollbar { width: 3px; }
+    .display-history::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+    .history-row {
+      font-size: 0.6rem; color: var(--history-text); line-height: 1.5;
+      display: flex; justify-content: space-between; align-items: center;
+    }
+    .history-row .h-expr { text-align: left; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; }
+    .history-row .h-result { text-align: right; margin-left: 0.5rem; flex-shrink: 0; }
+
+    /* Math expression rendered with MathML (like textbook notation) */
+    .display-math {
+      min-height: 1.8rem; width: 100%; text-align: right;
+      overflow-x: auto; overflow-y: hidden; padding: 0.2rem 0;
+      scrollbar-width: none; display: flex; align-items: center; justify-content: flex-end;
+    }
+    .display-math::-webkit-scrollbar { display: none; }
+    .display-math math { font-size: 1rem; white-space: nowrap; direction: ltr; color: var(--expr-color); }
+    .display-math .empty-placeholder { font-size: 0.75rem; color: var(--text-dim); font-style: italic; }
+
+    /* Animated placeholder when the user needs to fill in something (e.g. inside sin(?)) */
+    .display-math math .placeholder {
+      display: inline-block; min-width: 1.5em; text-align: center;
+      border-bottom: 1.5px dashed var(--ph-color);
+      color: transparent; font-size: 0.01px;
+      margin: 0 0.05em; position: relative;
+      animation: phPulse 2s ease-in-out infinite;
+    }
+    .display-math math .placeholder::after {
+      content: '?'; color: var(--text-dim); font-size: 0.7rem;
+      position: absolute; left: 50%; top: 50%;
+      transform: translate(-50%, -50%);
+    }
+    /* Pulsing animation for the placeholder underline */
+    @keyframes phPulse {
+      0%, 100% { border-color: var(--ph-color); }
+      50% { border-color: var(--chip-active-text); }
+    }
+
+    /* Textarea for direct expression editing (hidden by default, shown when user clicks display) */
+    .display-editor {
+      display: none; width: 100%; min-height: 1.6rem;
+      background: transparent; border: none; outline: none;
+      font-family: 'Courier New', monospace; font-size: 0.95rem;
+      color: var(--text-primary); text-align: right; resize: none;
+      overflow: hidden; padding: 0; caret-color: var(--caret-color);
+    }
+    .display.editing .display-math { display: none; }    /* Hide MathML when editing */
+    .display.editing .display-editor { display: block; }  /* Show textarea when editing */
+    .display.editing { border-color: var(--caret-color); box-shadow: 0 0 0 1px var(--caret-color); }
+
+    /* Result row at the bottom of display: "= 42" */
+    .display-result {
+      display: flex; justify-content: flex-end; align-items: baseline;
+      width: 100%; min-height: 2rem; gap: 0.25rem;
+    }
+    .display-eq-sign {
+      font-size: 1.1rem; color: var(--text-muted); font-family: 'Segoe UI', monospace; user-select: none;
+    }
+    .display-value {
+      font-size: 2.2rem; font-weight: 300; color: var(--text-primary);
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      font-variant-numeric: tabular-nums;
+      text-align: right; line-height: 1.15; overflow: hidden;
+      text-overflow: ellipsis; white-space: nowrap; max-width: 100%;
+    }
+    .display-value.small { font-size: 1.4rem; }
+    .display-value.xsmall { font-size: 1.1rem; }
+    .display-value.err { color: var(--err-color); font-weight: 600; }
+
+    /* ═══════════════════════════════════════════════════════════════
+       EXTRA CALCULATOR ANIMATIONS
+       Springy result pop + display glow when pressing =,
+       error shake, button ripples, card entrance, and more.
+       ═══════════════════════════════════════════════════════════════ */
+    /* Rolling odometer digits when = is pressed (each digit flips in, left → right) */
+    .display-value .odometer-digit {
+      display: inline-block;
+      animation: odometerRoll 0.4s cubic-bezier(0.22, 1, 0.36, 1) both;
+      transform-origin: 50% 100%;
+      will-change: transform, opacity;
+    }
+    @keyframes odometerRoll {
+      0% { transform: perspective(180px) translateY(0.75em) rotateX(-72deg); opacity: 0; }
+      100% { transform: perspective(180px) translateY(0) rotateX(0deg); opacity: 1; }
+    }
+    /* Confetti burst inside the display for special answers (67 / 69) */
+    .confetti-piece {
+      position: absolute; z-index: 6; pointer-events: none; opacity: 0;
+      animation: confettiFall 1.2s ease-in forwards;
+    }
+    @keyframes confettiFall {
+      0% { transform: translateY(0) rotate(0deg); opacity: 1; }
+      100% { transform: translateY(95px) rotate(540deg); opacity: 0; }
+    }
+    /* Visible panels slide in when switching calculator modes */
+    .keypad-area.mode-switch, .graph-view.mode-switch, .display.mode-switch {
+      animation: modeSwitchIn 0.28s ease;
+    }
+    @keyframes modeSwitchIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    /* The whole display card briefly glows when = is pressed */
+    .display.flash { animation: displayFlash 0.5s ease-out; }
+    @keyframes displayFlash {
+      0% { box-shadow: 0 0 0 2px var(--tab-indicator), 0 0 26px rgba(31,111,235,0.5); }
+      100% { box-shadow: 0 0 0 0 transparent; }
+    }
+    /* Display shakes left/right when the calculation errors */
+    .display.shake { animation: shakeX 0.4s ease; }
+    @keyframes shakeX {
+      0%, 100% { transform: translateX(0); }
+      20% { transform: translateX(-7px); }
+      40% { transform: translateX(7px); }
+      60% { transform: translateX(-5px); }
+      80% { transform: translateX(5px); }
+    }
+    /* Ripple effect spawned on key presses (clipped by the button's overflow) */
+    .key-btn .ripple {
+      position: absolute; border-radius: 50%; pointer-events: none;
+      background: var(--btn-ripple, rgba(255,255,255,0.25));
+      transform: scale(0); animation: rippleAnim 0.55s ease-out;
+    }
+    @keyframes rippleAnim { to { transform: scale(1); opacity: 0; } }
+    [data-theme="light"] .key-btn .ripple { background: rgba(0,0,0,0.12); }
+    /* The calculator card fades + slides in when the page loads */
+    .calc { animation: calcEntrance 0.45s cubic-bezier(0.22, 1, 0.36, 1); }
+    @keyframes calcEntrance {
+      from { opacity: 0; transform: translateY(16px) scale(0.98); }
+      to { opacity: 1; transform: translateY(0) scale(1); }
+    }
+    /* New history entries slide in from above */
+    .history-row { animation: historyIn 0.25s ease-out; }
+    @keyframes historyIn {
+      from { opacity: 0; transform: translateY(-8px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    /* Active tab underline grows in from the center */
+    .mode-tab.active::after, .keypad-tab.active::after { animation: tabIn 0.25s ease; }
+    @keyframes tabIn {
+      from { transform: scaleX(0); opacity: 0; }
+      to { transform: scaleX(1); opacity: 1; }
+    }
+    /* Keypad panels fade + slide in when switching Main / ABC / Funct */
+    .keypad-panel.active { animation: panelIn 0.18s ease; }
+    @keyframes panelIn {
+      from { opacity: 0; transform: translateY(3px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    /* Theme toggle spins playfully when clicked */
+    .chip.spin { animation: chipSpin 0.45s ease; }
+    @keyframes chipSpin {
+      0% { transform: rotate(0deg) scale(1); }
+      50% { transform: rotate(180deg) scale(1.25); }
+      100% { transform: rotate(360deg) scale(1); }
+    }
+    /* Respect users who prefer reduced motion: disable decorative animations */
+    @media (prefers-reduced-motion: reduce) {
+      .calc, .history-row, .keypad-panel.active,
+      .mode-tab.active::after, .keypad-tab.active::after,
+      .display-value .odometer-digit, .display.flash, .display.shake,
+      .key-btn.key-press, .chip.spin,
+      .keypad-area.mode-switch, .graph-view.mode-switch, .display.mode-switch,
+      .display-math math .placeholder, .math-caret {
+        animation: none !important;
+      }
+      .key-btn .ripple { display: none; }
+      .confetti-piece { display: none; }
+    }
+
+    /* ─── Graph View (Graphing mode) ─── */
+    .graph-view { display: none; }                          /* Hidden by default */
+    .calc.mode-graphing .graph-view { display: block; }    /* Shown in graphing mode */
+    .calc.mode-graphing .keypad-area { display: none; }     /* Hide regular keypad */
+    .calc.mode-graphing .graph-4func { display: block; }
+    .calc.mode-graphing .display { display: none; }         /* Hide regular display */
+
+    /* ─── Graphing keypad — DESMOS-STYLE (symbols | numbers | actions) ─── */
+    .graph-keypad { display: flex; flex-direction: column; gap: 0.3rem; padding: 0.3rem 0; }
+    .gkp-row {
+      display: flex; gap: 0.3rem; align-items: stretch;
+    }
+    /* Symbol / number / action groups + the 0.5-unit gaps between them */
+    .gkp-group { display: flex; gap: 0.3rem; flex: 1; min-width: 0; }
+    .gkp-group .key-btn { flex: 1 1 0; min-width: 0; padding: 0.55rem 0.1rem; font-size: 0.85rem; }
+    .gkp-gap { flex: 0 0 0.15rem; }
+    .gkp-actions { display: flex; gap: 0.3rem; flex: 0 0 auto; }
+    .gkp-actions .key-btn { padding: 0.55rem 0.5rem; font-size: 0.8rem; min-width: 2.2rem; }
+    .gkp-actions-2 .key-btn { min-width: 1.6rem; }
+    /* Functions popover + ABC letters strip (toggled via .open) */
+    .gkp-popover, .gkp-letters {
+      display: none; margin-bottom: 0.3rem; padding: 0.35rem;
+      border: 1px solid var(--border); border-radius: 8px;
+      background: var(--panel-bg, #1a1c22);
+    }
+    .gkp-popover.open, .gkp-letters.open { display: block; }
+    .gkp-popover-grid {
+      display: grid; grid-template-columns: repeat(7, 1fr); gap: 0.25rem;
+    }
+    .gkp-popover-grid .key-btn { padding: 0.45rem 0.1rem; font-size: 0.78rem; }
+    .gkp-letters { display: none; }
+    .gkp-letters.open { display: flex; flex-wrap: wrap; gap: 0.25rem; }
+    .gkp-letters .key-btn {
+      flex: 0 0 calc(10% - 0.25rem); padding: 0.4rem 0.1rem; font-size: 0.78rem;
+    }
+    /* ▶ Animate button on integral rows (sweeps the bound slider) */
+    .anim-btn {
+      align-self: center;
+      background: var(--btn-num-bg, #2d2f36);
+      color: var(--text-primary);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 0.25rem 0.5rem;
+      font-size: 0.75rem;
+      cursor: pointer;
+      transition: all 0.1s ease;
+    }
+    .anim-btn:hover { background: var(--btn-num-hover); }
+    .anim-btn:active { transform: scale(0.92); }
+    /* Muted audio key (sound off) */
+    .key-btn.muted { opacity: 0.55; }
+    .calc.mode-graphing .graph-container { margin-bottom: 0; }
+    .calc.mode-graphing .canvas-wrap canvas { height: 260px; }
+
+    .graph-container {
+      display: flex; flex-direction: column; gap: 0.35rem;
+      margin-bottom: 0.5rem;
+    }
+
+    /* List of function expressions the user has entered (e.g. "y = sin(x)") */
+    .graph-expr-list {
+      display: flex; flex-direction: column; gap: 0.25rem;
+      max-height: 6rem; overflow-y: auto;
+    }
+    .graph-expr-item {
+      display: flex; align-items: center; gap: 0.35rem;
+      background: var(--expr-item-bg);
+      border: 1px solid var(--expr-item-border);
+      border-radius: 8px; padding: 0.3rem 0.5rem;
+    }
+    .graph-expr-item .color-dot {
+      width: 10px; height: 10px; border-radius: 50%;
+      flex-shrink: 0; cursor: pointer;
+    }
+    .graph-expr-item .color-dot.hidden { opacity: 0.2; }  /* Dimmed when hidden */
+    .graph-expr-item input {
+      flex: 1; background: transparent; border: none;
+      font-family: 'Courier New', monospace; font-size: 0.85rem;
+      color: var(--text-primary); outline: none;
+    }
+    .graph-expr-item .del-btn {
+      font-size: 0.65rem; cursor: pointer; color: var(--btn-del-text);
+      background: none; border: none; font-family: inherit; padding: 2px;
+    }
+
+    /* Row to add a new graph expression */
+    .graph-input-row {
+      display: flex; gap: 0.35rem;
+    }
+    .graph-input-row input {
+      flex: 1; background: var(--bg-display);
+      border: 1px solid var(--border); border-radius: 8px;
+      padding: 0.4rem 0.6rem;
+      font-family: 'Courier New', monospace; font-size: 0.85rem;
+      color: var(--text-primary); outline: none; caret-color: var(--caret-color);
+    }
+    .graph-input-row input:focus { border-color: var(--caret-color); }
+    .graph-input-row button {
+      padding: 0.4rem 0.7rem; border-radius: 8px;
+      font-size: 0.75rem; font-weight: 600; cursor: pointer;
+      border: 1px solid var(--border); background: var(--btn-op-bg);
+      color: var(--btn-op-text); font-family: inherit;
+    }
+    .graph-input-row button:hover { background: var(--btn-op-hover); }
+
+    /* The canvas where graphs are drawn */
+    .canvas-wrap {
+      position: relative; border-radius: 10px; overflow: hidden;
+      border: 1px solid var(--border); background: var(--canvas-bg);
+    }
+    .canvas-wrap canvas {
+      display: block; width: 100%; height: 220px;
+      cursor: grab; touch-action: none;     /* Touch support for panning */
+    }
+    .canvas-wrap canvas:active { cursor: grabbing; }
+
+    /* Zoom control buttons on the canvas */
+    .graph-controls {
+      position: absolute; top: 6px; right: 6px;
+      display: flex; flex-direction: column; gap: 3px;
+    }
+    .graph-controls button {
+      width: 28px; height: 24px; display: flex; align-items: center; justify-content: center;
+      border: 1px solid var(--border); border-radius: 4px;
+      background: var(--btn-num-bg); color: var(--text-primary);
+      font-size: 0.75rem; cursor: pointer; font-family: inherit;
+    }
+    .graph-controls button:hover { background: var(--btn-num-hover); }
+    .graph-controls button.active {
+      background: var(--tab-indicator, #58a6ff);
+      color: #fff;
+      box-shadow: 0 0 6px var(--tab-indicator, #58a6ff);
+    }
+
+    /* Coordinate label at bottom-left of canvas (e.g. "(0, 0)") */
+    .graph-coord-label {
+      position: absolute; bottom: 22px; left: 6px;
+      font-size: 0.6rem; color: var(--text-dim);
+      font-family: 'Courier New', monospace; user-select: none;
+    }
+
+    /* Step/scale control at bottom-right of canvas */
+    .graph-step-control {
+      position: absolute; bottom: 4px; right: 6px;
+      display: flex; align-items: center; gap: 4px;
+      font-size: 0.6rem; color: var(--text-dim);
+      font-family: 'Courier New', monospace;
+      user-select: none; pointer-events: auto;
+    }
+    .graph-step-control button {
+      width: 20px; height: 18px; display: flex; align-items: center; justify-content: center;
+      border: 1px solid var(--border); border-radius: 3px;
+      background: var(--btn-num-bg); color: var(--text-primary);
+      font-size: 0.65rem; cursor: pointer; font-family: inherit; padding: 0; line-height: 1;
+    }
+    .graph-step-control button:hover { background: var(--btn-num-hover); }
+    .graph-step-control .step-label {
+      min-width: 36px; text-align: center; font-size: 0.6rem;
+    }
+
+    /* ─── Keypad Area ─── */
+    .keypad-area { display: block; }
+    /* Show/hide different keypads based on calculator mode */
+    .calc.mode-fourfunction .keypad-sci { display: none; }
+    .calc.mode-scientific .keypad-4func { display: none; }
+    .calc.mode-graphing .keypad-4func { display: none; }
+    .calc.mode-graphing .keypad-sci { display: none; }
+
+    /* Tabs within the scientific keypad (Main / ABC / Funct) */
+    .keypad-tabs {
+      display: flex; gap: 0.15rem; margin-bottom: 0.5rem;
+      border-bottom: 1px solid var(--border); padding-bottom: 0;
+    }
+    .keypad-tab {
+      flex: 1; padding: 0.35rem 0.3rem 0.45rem; font-size: 0.7rem; font-weight: 600;
+      text-align: center; cursor: pointer; border: none; border-radius: 6px 6px 0 0;
+      background: transparent; color: var(--tab-text);
+      font-family: inherit; transition: all 0.2s ease; user-select: none;
+      position: relative;
+    }
+    .keypad-tab:hover { color: var(--tab-active-text); background: var(--tab-active-bg); }
+    .keypad-tab.active { color: var(--tab-active-text); background: var(--tab-active-bg); }
+    .keypad-tab.active::after {
+      content: ''; position: absolute; bottom: 0; left: 20%; right: 20%;
+      height: 2px; background: var(--tab-indicator); border-radius: 1px;
+    }
+
+    .keypad-panel { display: none; }
+    .keypad-panel.active { display: block; }
+
+    /* Grid layouts for different keypad panels */
+    .panel-grid { display: grid; gap: 0.35rem; }
+    .panel-grid.cols-5 { grid-template-columns: repeat(5, 1fr); }
+    .panel-grid.cols-4 { grid-template-columns: repeat(4, 1fr); }
+    .panel-grid.cols-10 { grid-template-columns: repeat(10, 1fr); }
+    .panel-grid.cols-7 { grid-template-columns: repeat(7, 1fr); }  /* FreeCalc scientific func keyboard */
+    .panel-grid.cols-11 { grid-template-columns: repeat(11, 1fr); } /* FreeCalc scientific main keyboard */
+    /* Invisible spacer cells used where FreeCalc has "partition" gaps */
+    .panel-grid .key-gap { visibility: hidden; }
+    /* Wide equals key at the bottom-right of the FreeCalc main keypad */
+    .panel-grid .key-btn.eq-wide { grid-column: span 2; }
+
+    /* ─── Scientific keypad toolbar (FreeCalc-style): AC top-right, tabs bottom ─── */
+    .sci-toolbar { display: flex; justify-content: flex-end; margin-bottom: 0.5rem; }
+    .sci-toolbar .sci-ac { padding: 0.4rem 0.7rem; font-size: 0.7rem; border-radius: 6px; font-weight: 700; }
+    /* Tabs sit at the BOTTOM of the keypad, like FreeCalc */
+    .keypad-tabs.keypad-tabs-bottom {
+      margin-top: 0.5rem; margin-bottom: 0;
+      border-bottom: none; border-top: 1px solid var(--border);
+    }
+    .keypad-tabs-bottom .keypad-tab { border-radius: 0 0 6px 6px; }
+    .keypad-tabs-bottom .keypad-tab.active::after { top: 0; bottom: auto; }
+
+    /* Blinking caret for the in-expression cursor (← → keys) */
+    .math-caret {
+      display: inline-block; width: 2px; height: 1.15em;
+      background: var(--text-primary); margin: 0 1px;
+      vertical-align: -0.18em; border-radius: 1px;
+      animation: caretBlink 1s step-end infinite;
+    }
+    @keyframes caretBlink { 50% { opacity: 0; } }
+
+    /* ─── ABC panel: FreeCalc QWERTY keyboard (phone-style, staggered) ─── */
+    .abc-rows { display: flex; flex-direction: column; gap: 5px; }
+    .abc-row { display: flex; gap: 5px; }
+    .abc-row .key-btn { flex: 1 1 0; min-width: 0; }
+    .abc-row .key-btn.alpha { font-size: 0.85rem; padding: 0.6rem 0.1rem; border-radius: 8px; }
+    /* Phone-keyboard stagger: 2nd row indented ~half a key on each side (FreeCalc) */
+    .abc-row.abc-indent-half { padding-left: calc(5% + 3px); padding-right: calc(5% + 3px); }
+    .abc-row.abc-shift-row .key-btn { font-size: 0.8rem; }
+    /* Shift toggled: letter keys render uppercase (FreeCalc) */
+    .abc-row .key-btn.alpha.shift-on { text-transform: uppercase; }
+
+
+    /* ─── Button Styles ─── */
+    .key-btn {
+      display: flex; align-items: center; justify-content: center;
+      padding: 0.7rem 0.2rem; font-size: 0.95rem; font-weight: 600;
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      border: none; border-radius: 8px; cursor: pointer;
+      transition: all 0.1s ease; user-select: none; -webkit-tap-highlight-color: transparent;
+      position: relative; overflow: hidden;
+    }
+    .key-btn:active { transform: scale(0.92); }   /* Squish effect on click */
+    .key-btn:focus-visible { outline: 2px solid var(--tab-indicator); outline-offset: 2px; }
+    .key-btn.key-press { animation: keyPress 0.15s ease-out; }
+    @keyframes keyPress {
+      0% { transform: scale(0.92); }
+      50% { transform: scale(0.94); }
+      100% { transform: scale(1); }
+    }
+    .key-btn .sub {
+      font-size: 0.55rem; font-weight: 400; opacity: 0.7;
+      position: absolute; top: 3px; left: 50%; transform: translateX(-50%);
+      letter-spacing: 0.3px;
+    }
+
+    /* Button type color classes */
+    .key-btn.num { color: var(--btn-num-text); background: var(--btn-num-bg); }
+    .key-btn.num:hover { background: var(--btn-num-hover); }
+    .key-btn.op { color: var(--btn-op-text); background: var(--btn-op-bg); }
+    .key-btn.op:hover { background: var(--btn-op-hover); }
+    .key-btn.eq { color: var(--btn-eq-text); background: var(--btn-eq-bg); font-weight: 700; }
+    .key-btn.eq:hover { background: var(--btn-eq-hover); }
+    .key-btn.func { color: var(--btn-func-text); background: var(--btn-func-bg); font-size: 0.85rem; }
+    .key-btn.func:hover { background: var(--btn-func-hover); }
+    .key-btn.func.second-active { color: var(--btn-op-text); background: var(--chip-active-bg); }
+    .key-btn.del { color: var(--btn-del-text); background: var(--btn-num-bg); }
+    .key-btn.del:hover { background: var(--btn-num-hover); }
+    .key-btn.special { color: var(--btn-special-text); background: var(--btn-num-bg); }
+    .key-btn.special:hover { background: var(--btn-num-hover); }
+    .key-btn.alpha { color: var(--btn-num-text); background: var(--btn-num-bg); font-size: 0.7rem; padding: 0.5rem 0.1rem; }
+    .key-btn.alpha:hover { background: var(--btn-num-hover); }
+    .key-btn.small-text { font-size: 0.75rem; }
+
+    /* ═══════════════════════════════════════════════════════════════
+       FREECALC-STYLE 4-FUNCTION KEYPAD
+       Clean, minimal look inspired by modern web calculators:
+       spacious 4-column grid, rounded keys, blue live result.
+       ═══════════════════════════════════════════════════════════════ */
+    .calc.mode-fourfunction .keypad-4func .panel-grid { gap: 0.55rem; }
+    .calc.mode-fourfunction .keypad-4func .key-btn {
+      border-radius: 12px;
+      padding: 0.85rem 0.2rem;
+      font-size: 1.1rem;
+      font-weight: 500;
+      box-shadow: none;
+    }
+    /* Wide blue equals key spanning the whole bottom row */
+    .calc.mode-fourfunction .keypad-4func .key-btn.eq {
+      grid-column: span 2; /* Wide equals on the bottom row, next to 0 and . (FreeCalc-style) */
+      background: var(--freecalc-eq-bg);
+      color: #ffffff;
+      font-size: 1.2rem;
+      font-weight: 600;
+    }
+    .calc.mode-fourfunction .keypad-4func .key-btn.eq:hover { background: var(--freecalc-eq-hover); }
+    .calc.mode-fourfunction .keypad-4func .key-btn.num,
+    .calc.mode-fourfunction .keypad-4func .key-btn.special { background: var(--freecalc-key-bg); color: var(--freecalc-key-text); }
+    .calc.mode-fourfunction .keypad-4func .key-btn.num:hover,
+    .calc.mode-fourfunction .keypad-4func .key-btn.special:hover { background: var(--freecalc-key-hover); }
+    .calc.mode-fourfunction .keypad-4func .key-btn.op { background: var(--freecalc-op-bg); color: var(--freecalc-op-text); }
+    .calc.mode-fourfunction .keypad-4func .key-btn.op:hover { background: var(--freecalc-op-hover); }
+    .calc.mode-fourfunction .keypad-4func .key-btn.func { background: var(--freecalc-fn-bg); color: var(--freecalc-fn-text); font-size: 1rem; }
+    .calc.mode-fourfunction .keypad-4func .key-btn.func:hover { background: var(--freecalc-fn-hover); }
+    .calc.mode-fourfunction .keypad-4func .key-btn.del { background: var(--freecalc-fn-bg); color: var(--freecalc-del-text); font-size: 1rem; }
+    .calc.mode-fourfunction .keypad-4func .key-btn.del:hover { background: var(--freecalc-fn-hover); }
+
+    /* Display: crisp white card with the live result in FreeCalc blue */
+    .calc.mode-fourfunction .display {
+      background: var(--freecalc-display-bg);
+      border: 1px solid var(--freecalc-display-border);
+      box-shadow: 0 1px 2px rgba(0,0,0,0.04);
+    }
+    .calc.mode-fourfunction .display-value { color: var(--freecalc-result); font-weight: 500; }
+    .calc.mode-fourfunction .display-eq-sign { color: var(--freecalc-result); }
+    .calc.mode-fourfunction .display-math math { color: var(--freecalc-key-text); }
+    /* RAD/DEG chip and precision dropdown don't apply to a plain 4-function keypad */
+    .calc.mode-fourfunction #angleModeBtn,
+    .calc.mode-fourfunction .precision-wrap { display: none; }
+
+    .calc-footer { margin-top: 0.6rem; text-align: center; font-size: 0.5rem; color: var(--text-dim); }
+
+    /* Cursor crosshair coordinates on canvas */
+    .canvas-cursor-coords {
+      position: absolute; bottom: 4px; left: 6px;
+      font-size: 0.6rem; color: var(--text-dim);
+      font-family: 'Courier New', monospace; user-select: none;
+      pointer-events: none;
+    }
+    .canvas-cursor-coords .highlight {
+      color: var(--text-secondary); font-weight: 600;
+    }
+
+    /* Extra graph expression list improvements */
+    .graph-expr-list { max-height: 8rem !important; }
+    .graph-expr-item input { font-size: 0.8rem !important; }
+    .graph-expr-item .color-dot {
+      width: 12px !important; height: 12px !important;
+      border: 2px solid transparent; transition: all 0.15s ease;
+    }
+    .graph-expr-item .color-dot.hidden { opacity: 0.2; border-color: transparent; }
+    .graph-expr-item .color-dot:hover { transform: scale(1.15); }
+
+    /* Mobile responsiveness */
+    @media (max-width: 420px) {
+      .calc { padding: 1rem 0.7rem; border-radius: 16px; }
+      .display-value { font-size: 1.7rem; }
+      .display-math math { font-size: 0.85rem; }
+      .key-btn { padding: 0.55rem 0.1rem; font-size: 0.85rem; border-radius: 6px; }
+      .key-btn.small-text { font-size: 0.65rem; }
+      .panel-grid { gap: 0.25rem; }
+      .canvas-wrap canvas { height: 180px; }
+      .graph-expr-list { max-height: 6rem !important; }
+    }
+
+    /* ═══════════════════════════════════════════════════════════════        GRAPHING-CALCULATOR-STYLE GRAPH LAYOUT (sidebar list + canvas)
+       Left panel holds the editable expression list, right holds the canvas.
+       ═══════════════════════════════════════════════════════════════ */
+    .graph-layout {
+      display: flex;
+      gap: 0.5rem;
+      align-items: stretch;
+      margin-bottom: 0.5rem;
+    }
+    /* Left: expression list panel */
+    .graph-sidebar {
+      flex: 0 0 200px;
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 0.35rem;
+    }
+    .calc.mode-graphing .graph-sidebar .graph-expr-list {
+      max-height: none;
+      flex: 1;
+      min-height: 0;
+    }
+    /* Right: canvas column */
+    .graph-canvas-col {
+      flex: 1;
+      min-width: 0;
+    }
+    .calc.mode-graphing .canvas-wrap canvas { height: 300px; }
+
+    /* ── t / θ sampling range controls (parametric & polar curves) ── */
+    .graph-range-panel {
+      display: flex; flex-direction: column; gap: 4px;
+      padding: 6px 8px;
+      background: var(--expr-item-bg, rgba(255,255,255,0.03));
+      border: 1px solid var(--expr-item-border, rgba(255,255,255,0.08));
+      border-radius: 8px;
+    }
+    .graph-range-row {
+      display: flex; align-items: center; gap: 4px;
+      font-family: 'Courier New', monospace; font-size: 0.62rem;
+      color: var(--text-dim);
+    }
+    .graph-range-row .range-var { min-width: 14px; font-weight: 700; }
+    .graph-range-row .range-sep { opacity: 0.6; }
+    .graph-range-row input[type="number"] {
+      flex: 1; min-width: 0;
+      background: var(--bg-display, #0a0b0e);
+      border: 1px solid var(--border, #2b2f3a);
+      border-radius: 4px;
+      color: var(--text-primary);
+      font-family: 'Courier New', monospace; font-size: 0.62rem;
+      padding: 2px 4px; outline: none;
+    }
+    .graph-range-row input[type="number"]:focus { border-color: var(--caret-color, #58a6ff); }
+    /* Zoom / aspect slider rows in the View section of the range panel */
+    .graph-range-row.slider-row { gap: 6px; }
+    .graph-range-row input[type="range"] {
+      flex: 1; min-width: 0;
+      height: 16px;
+      accent-color: var(--caret-color, #58a6ff);
+      cursor: pointer;
+      background: transparent;
+    }
+    .graph-range-row input[type="range"]:disabled {
+      opacity: 0.35; cursor: not-allowed;
+    }
+    .graph-range-row .range-val {
+      min-width: 30px; text-align: right;
+      font-family: 'Courier New', monospace;
+      font-size: 0.6rem;
+      color: var(--text-muted, #7d8590);
+    }
+    /* Section label inside the range panel (x/y = viewport, t/θ = sampling) */
+    .graph-range-head {
+      font-size: 0.58rem; text-transform: uppercase; letter-spacing: 0.05em;
+      color: var(--text-dim); opacity: 0.75; margin: 2px 0 0;
+      font-family: inherit;
+    }
+
+    /* ── Legend overlay (color → curve name, top-left of the canvas) ── */
+    .graph-legend {
+      position: absolute; top: 6px; left: 6px;
+      display: flex; flex-direction: column; gap: 3px;
+      max-width: 60%;
+      background: rgba(0,0,0,0.35);
+      border-radius: 6px; padding: 5px 8px;
+      pointer-events: none;              /* clicks pass through to the canvas */
+      user-select: none;
+    }
+    .graph-legend:empty { display: none; }
+    .graph-legend .legend-item {
+      display: flex; align-items: center; gap: 5px;
+      font-family: 'Courier New', monospace; font-size: 0.6rem;
+      color: var(--text-primary);
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .graph-legend .legend-dot {
+      width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0;
+    }
+
+    /* ── Keyboard shortcuts cheat sheet (toggled by the ? button) ── */
+    .graph-help {
+      position: absolute; top: 40px; right: 6px;
+      min-width: 190px;
+      background: var(--dropdown-bg, #171a21);
+      border: 1px solid var(--border, #2b2f3a);
+      border-radius: 8px;
+      padding: 8px 10px;
+      font-size: 0.62rem; color: var(--text-primary);
+      box-shadow: 0 6px 18px rgba(0,0,0,0.45);
+      display: none; z-index: 5;
+    }
+    .graph-help.open { display: block; }
+    .graph-help b { display: block; margin-bottom: 5px; color: var(--text-primary); }
+    .graph-help ul { margin: 0; padding-left: 14px; display: flex; flex-direction: column; gap: 3px; }
+    .graph-help kbd {
+      font-family: inherit; font-size: 0.58rem;
+      background: var(--btn-num-bg, #21262d);
+      border: 1px solid var(--border, #2b2f3a); border-radius: 3px;
+      padding: 0 4px; margin-right: 3px;
+    }
+
+    /* Editable expression rows (graphing-calculator-style) */
+    .graph-expr-item {
+      display: flex;
+      align-items: center;
+      gap: 0.35rem;
+      background: var(--expr-item-bg);
+      border: 1px solid var(--expr-item-border);
+      border-radius: 8px;
+      padding: 0.3rem 0.45rem;
+      transition: border-color 0.15s ease, box-shadow 0.15s ease;
+    }
+    .graph-expr-item:hover { border-color: var(--text-muted); }
+    .graph-expr-item.active { border-color: var(--tab-indicator); box-shadow: 0 0 0 1px var(--tab-indicator); }
+    .graph-expr-item .color-dot {
+      width: 12px; height: 12px; border-radius: 50%;
+      flex-shrink: 0; cursor: pointer;
+      transition: transform 0.15s ease, opacity 0.15s ease;
+    }
+    .graph-expr-item .color-dot:hover { transform: scale(1.2); }
+    .graph-expr-item .color-dot.hidden { opacity: 0.2; }
+    .graph-expr-item .expr-input {
+      flex: 1; background: transparent; border: none; outline: none;
+      font-family: 'Courier New', monospace; font-size: 0.8rem;
+      color: var(--text-primary); min-width: 0;
+    }
+    .graph-expr-item.err .expr-input { color: var(--err-color); }
+    .graph-expr-item .expr-value {
+      font-size: 0.6rem; color: var(--text-dim); white-space: nowrap;
+      font-family: 'Courier New', monospace; flex-shrink: 0;
+    }
+    .graph-expr-item .del-btn {
+      font-size: 0.65rem; cursor: pointer; color: var(--btn-del-text);
+      background: none; border: none; font-family: inherit; padding: 2px;
+      opacity: 0; transition: opacity 0.15s ease; flex-shrink: 0;
+    }
+    /* ── Sliders for letter variables (a, b, k…) — drag to animate the curve ── */
+    .graph-expr-item .expr-sliders {
+      display: flex; flex-direction: column; gap: 3px;
+      width: 100%; padding: 2px 4px 2px 20px; /* indent under the color dot */
+    }
+    .graph-expr-item .expr-slider-row {
+      display: flex; align-items: center; gap: 6px;
+      font-size: 0.62rem; color: var(--text-dim);
+      font-family: 'Courier New', monospace;
+    }
+    .graph-expr-item .expr-slider-row .slider-name { min-width: 14px; flex-shrink: 0; }
+    .graph-expr-item .expr-slider-row input[type="range"] {
+      flex: 1; height: 4px; accent-color: var(--tab-indicator, #58a6ff);
+      cursor: pointer; min-width: 0;
+    }
+    .graph-expr-item .expr-slider-row .slider-val {
+      min-width: 30px; text-align: right; flex-shrink: 0;
+      font-variant-numeric: tabular-nums;
+    }
+    }
+    .graph-expr-item:hover .del-btn { opacity: 1; }
+    .graph-expr-item .del-btn:hover { opacity: 1; transform: scale(1.2); }
+
+    /* "+ Add expression" button under the list */
+    .graph-add-btn {
+      padding: 0.4rem 0.6rem;
+      font-size: 0.75rem; font-weight: 600; cursor: pointer;
+      border: 1px dashed var(--prec-border); border-radius: 8px;
+      background: transparent; color: var(--chip-text);
+      font-family: inherit; transition: all 0.15s ease;
+    }
+    .graph-add-btn:hover { background: var(--chip-bg); color: var(--tab-active-text); }
+
+    /* Stack the sidebar above the canvas on narrow screens */
+    @media (max-width: 640px) {
+      .graph-layout { flex-direction: column; }
+      .graph-sidebar { flex: none; width: 100%; }
+      .calc.mode-graphing .graph-sidebar .graph-expr-list { max-height: 6rem; }
+    }
+  

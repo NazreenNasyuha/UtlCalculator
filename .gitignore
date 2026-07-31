@@ -1,0 +1,38 @@
+# ── OS junk ──────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+desktop.ini
+*.swp
+*~
+
+# ── Editor / IDE ─────────────────────────────────────────
+.vscode/
+.idea/
+*.code-workspace
+
+# ── Node / npm (not used, but harmless to ignore) ────────
+node_modules/
+package-lock.json
+
+# ── Scratch / temporary files ────────────────────────────
+*.tmp
+*.bak
+*_split_helper.js
+_chk.mjs
+_*.sh
+_*.js
+_*.html
+_*.log
+nul
+
+# ── Browser-test artifacts ───────────────────────────────
+_browser_test.html
+_browser_test.sh
+_dom_dump.html
+_edge_err.log
+_graph_shot.png
+_edge_profile/
+_inject.js
+
+# ── Logs ─────────────────────────────────────────────────
+*.log

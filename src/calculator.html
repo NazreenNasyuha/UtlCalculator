@@ -1,0 +1,547 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>FreeCalc Calculator</title>
+  <!-- ═══════════════════════════════════════════════════════════════════════════════
+       PROJECT STRUCTURE — calculator.html is the CORE (markup only).
+       The behavior lives in these files (same folder):
+         styles.css           → background & UI styling (themes, layout, buttons, graph)
+         engine.js            → the calculation engine (tokenize → RPN → evaluate)
+         mathml-renderer.js   → turns expressions into textbook-style MathML
+         ui.js                → buttons/keypad behavior, sounds, theme, mode switching
+         graph.js             → the graphing engine (canvas, pan, zoom)
+         main.js              → event wiring + startup (boots the app)
+       Load order matters: engine → mathml-renderer → ui → graph → main
+       ═══════════════════════════════════════════════════════════════════════════════ -->
+  <link rel="stylesheet" href="styles.css" />
+
+</head>
+<body>
+  <!-- ============================================================
+       MAIN CALCULATOR APP
+       Starts in "scientific" mode (class="calc mode-scientific")
+       JS changes the mode class to switch between 4-Function, Scientific, Graphing
+       ============================================================ -->
+  <div class="calc mode-scientific" id="calc">
+    <!-- ─── HEADER: Brand name + control buttons (precision, angle, theme) ─── -->
+    <div class="calc-brand">
+      <span class="name" id="modeLabel">Scientific</span>  <!-- Shows current mode name -->
+      <div class="controls">
+        <!-- Precision dropdown — changes how numbers are displayed (Auto, Fix 0-8, Sci, Eng) -->
+        <div class="precision-wrap" id="precisionWrap">
+          <button type="button" class="precision-btn" id="precisionBtn"><span id="precisionLabel">Auto</span><span class="arrow">▼</span></button>
+          <div class="precision-dropdown" id="precisionDropdown" style="display:none">
+            <div class="item active" data-prec="auto" style="padding:0.4rem 0.65rem;font-size:0.7rem;cursor:pointer;color:var(--dropdown-text);display:flex;align-items:center;justify-content:space-between"><span>Auto</span><span class="check">✓</span></div>
+            <div style="height:1px;background:var(--prec-border);margin:2px 0"></div>
+            <div class="item" data-prec="fix0" style="padding:0.4rem 0.65rem;font-size:0.7rem;cursor:pointer;color:var(--dropdown-text);display:flex;align-items:center;justify-content:space-between"><span>Fix 0</span><span class="check">✓</span></div>
+            <div class="item" data-prec="fix1" style="..."><span>Fix 1</span><span class="check">✓</span></div>
+            <div class="item" data-prec="fix2" style="padding:0.4rem 0.65rem;font-size:0.7rem;cursor:pointer;color:var(--dropdown-text);display:flex;align-items:center;justify-content:space-between"><span>Fix 2</span><span class="check">✓</span></div>
+            <div class="item" data-prec="fix3" style="padding:0.4rem 0.65rem;font-size:0.7rem;cursor:pointer;color:var(--dropdown-text);display:flex;align-items:center;justify-content:space-between"><span>Fix 3</span><span class="check">✓</span></div>
+            <div class="item" data-prec="fix4" style="padding:0.4rem 0.65rem;font-size:0.7rem;cursor:pointer;color:var(--dropdown-text);display:flex;align-items:center;justify-content:space-between"><span>Fix 4</span><span class="check">✓</span></div>
+            <div class="item" data-prec="fix5" style="padding:0.4rem 0.65rem;font-size:0.7rem;cursor:pointer;color:var(--dropdown-text);display:flex;align-items:center;justify-content:space-between"><span>Fix 5</span><span class="check">✓</span></div>
+            <div class="item" data-prec="fix6" style="padding:0.4rem 0.65rem;font-size:0.7rem;cursor:pointer;color:var(--dropdown-text);display:flex;align-items:center;justify-content:space-between"><span>Fix 6</span><span class="check">✓</span></div>
+            <div class="item" data-prec="fix7" style="padding:0.4rem 0.65rem;font-size:0.7rem;cursor:pointer;color:var(--dropdown-text);display:flex;align-items:center;justify-content:space-between"><span>Fix 7</span><span class="check">✓</span></div>
+            <div class="item" data-prec="fix8" style="padding:0.4rem 0.65rem;font-size:0.7rem;cursor:pointer;color:var(--dropdown-text);display:flex;align-items:center;justify-content:space-between"><span>Fix 8</span><span class="check">✓</span></div>
+            <div style="height:1px;background:var(--prec-border);margin:2px 0"></div>
+            <div class="item" data-prec="sci" style="padding:0.4rem 0.65rem;font-size:0.7rem;cursor:pointer;color:var(--dropdown-text);display:flex;align-items:center;justify-content:space-between"><span>Sci</span><span class="check">✓</span></div>
+            <div class="item" data-prec="eng" style="padding:0.4rem 0.65rem;font-size:0.7rem;cursor:pointer;color:var(--dropdown-text);display:flex;align-items:center;justify-content:space-between"><span>Eng</span><span class="check">✓</span></div>
+          </div>
+        </div>
+        <!-- Angle mode toggle: RAD (radians) ↔ DEG (degrees) for trig functions -->
+        <span class="chip" id="angleModeBtn">RAD</span>
+        <!-- Sound toggle: enable/disable key click sounds -->
+        <span class="chip" id="soundToggle" title="Toggle sound">🔊</span>
+        <!-- Theme toggle: dark ↔ light mode -->
+        <span class="chip" id="themeToggle">🌙</span>
+      </div>
+    </div>
+
+    <!-- ─── MODE TABS: Switch between 4-Function, Scientific, Graphing ─── -->
+    <div class="mode-tabs">
+      <button type="button" class="mode-tab" data-mode="fourfunction">4‑Function</button>
+      <button type="button" class="mode-tab active" data-mode="scientific">Scientific</button>
+      <button type="button" class="mode-tab" data-mode="graphing">Graphing</button>
+    </div>
+
+    <!-- ═══ SHARED DISPLAY (expression + result + history) ═══ -->
+    <div class="display" id="display">
+      <!-- History: scrollable list of previous calculations -->
+      <div class="display-history" id="displayHistory"></div>
+      <!-- MathML rendering of the current expression (beautiful math notation) -->
+      <div class="display-math" id="displayMath">
+        <span class="empty-placeholder">Type an expression...</span>
+      </div>
+      <!-- Hidden textarea for direct editing — appears when user clicks the display -->
+      <textarea class="display-editor" id="displayEditor" spellcheck="false" autocomplete="off" rows="1"></textarea>
+      <!-- Result: "= 42" shown below the expression -->
+      <div class="display-result" id="displayResult" style="display:none">
+        <span class="display-eq-sign">=</span>
+        <span class="display-value" id="displayValue">0</span>
+      </div>
+    </div>
+
+    <!-- ═══ GRAPH VIEW (Graphing mode only) — sidebar list + canvas ═══ -->
+    <!-- LEFT: expression list panel. RIGHT: canvas. -->
+    <div class="graph-view">
+      <div class="graph-layout">
+        <!-- ─── Expression list panel (rows are created by graph.js) ─── -->
+        <div class="graph-sidebar">
+          <div class="graph-expr-list" id="graphExprList"></div>
+          <!-- Adds a new empty expression row (like the + of a graphing calculator) -->
+          <button type="button" class="graph-add-btn" id="graphAddBtn" title="Add expression">＋</button>
+          <!-- ─── Viewport + sampling range controls ───
+               x/y rows = visible viewport bounds (pan/zoom also change these)
+               t/θ rows = sampling ranges for parametric & polar curves -->
+          <div class="graph-range-panel" id="graphRangePanel">
+            <div class="graph-range-row">
+              <span class="range-var">x</span>
+              <input type="number" step="any" id="xMinInput" title="Viewport x minimum" value="-10" />
+              <span class="range-sep">…</span>
+              <input type="number" step="any" id="xMaxInput" title="Viewport x maximum" value="10" />
+            </div>
+            <div class="graph-range-row">
+              <span class="range-var">y</span>
+              <input type="number" step="any" id="yMinInput" title="Viewport y minimum" value="-10" />
+              <span class="range-sep">…</span>
+              <input type="number" step="any" id="yMaxInput" title="Viewport y maximum" value="10" />
+            </div>
+            <div class="graph-range-row">
+              <span class="range-var">t</span>
+              <input type="number" step="any" id="tMinInput" title="Parametric t minimum" value="-10" />
+              <span class="range-sep">…</span>
+              <input type="number" step="any" id="tMaxInput" title="Parametric t maximum" value="10" />
+            </div>
+            <div class="graph-range-row">
+              <span class="range-var">θ</span>
+              <input type="number" step="any" id="thMinInput" title="Polar θ minimum" value="0" />
+              <span class="range-sep">…</span>
+              <input type="number" step="any" id="thMaxInput" title="Polar θ maximum" value="6.2832" />
+            </div>
+            <!-- ─── View sliders: zoom + aspect ratio ───
+                 Zoom slider re-scales the whole viewport around its center
+                 (preserving the current x:y ratio). Aspect slider stretches
+                 the view horizontally (disabled while the ▭ square-grid lock
+                 is active, because the lock pins the ratio to the canvas). -->
+            <div class="graph-range-head">View</div>
+            <div class="graph-range-row slider-row">
+              <span class="range-var" title="Zoom — viewport width">⌕</span>
+              <input type="range" id="viewZoomSlider" min="0.5" max="60" step="0.5" value="20" title="Zoom — drag to resize the viewport" />
+              <span class="range-val" id="viewZoomVal">20</span>
+            </div>
+            <div class="graph-range-row slider-row">
+              <span class="range-var" title="Aspect ratio — x width ÷ y height">⛶</span>
+              <input type="range" id="viewAspectSlider" min="0.25" max="4" step="0.05" value="1" title="Aspect ratio — stretch x vs y (locked while square-grid is on)" />
+              <span class="range-val" id="viewAspectVal">1.0</span>
+            </div>
+          </div>
+        </div>
+        <!-- ─── Canvas panel ─── -->
+        <div class="graph-canvas-col">
+          <div class="canvas-wrap">
+            <canvas id="graphCanvas"></canvas>
+            <!-- Legend overlay: shows which color belongs to which visible curve -->
+            <div class="graph-legend" id="graphLegend"></div>
+            <!-- Zoom/home controls overlay -->
+            <div class="graph-controls">
+              <button id="graphZoomIn" title="Zoom in">+</button>
+              <button id="graphZoomOut" title="Zoom out">−</button>
+              <button id="graphHome" title="Reset view">⌂</button>
+              <button id="graphAspect" title="Square grid: lock 1:1 aspect ratio">▭</button>
+              <button id="graphTraceBtn" title="Curve tracing: hover to walk along the curve (x, f(x), f'(x))">◎</button>
+              <button id="graphExport" title="Export PNG">⬇</button>
+              <button id="graphHelpBtn" title="Keyboard shortcuts">?</button>
+            </div>
+            <!-- Keyboard shortcuts cheat sheet (toggled by the ? button) -->
+            <div class="graph-help" id="graphHelp">
+              <b>Graph shortcuts</b>
+              <ul>
+                <li><kbd>Drag</kbd> pan the view</li>
+                <li><kbd>Scroll</kbd> zoom (cursor-centered)</li>
+                <li><kbd>Enter</kbd> new expression row</li>
+                <li><kbd>↑</kbd><kbd>↓</kbd> move between rows</li>
+                <li><kbd>Esc</kbd> close the row</li>
+                <li><kbd>x</kbd> <kbd>t</kbd> <kbd>θ</kbd> insert variable</li>
+                <li><kbd>a</kbd>–<kbd>z</kbd> letter slider variables</li>
+                <li><kbd>y' = x^3</kbd> plot the derivative</li>
+                <li><kbd>y'' = 6x</kbd> <kbd>d2/dx2 x^4</kbd> higher derivatives</li>
+                <li><kbd>integral(x^2, 0, 2)</kbd> shaded area + value</li>
+                <li><kbd>tangent(x^2, 2)</kbd> tangent line (or <kbd>a</kbd> for a slider point)</li>
+                <li><kbd>◎</kbd> curve tracing: walk along the curve with the mouse</li>
+                <li>Right-click dot: cycle color</li>
+              </ul>
+            </div>
+            <!-- Coordinate display at mouse cursor position -->
+            <div class="graph-coord-label" id="graphCoordLabel">(0, 0)</div>
+            <!-- Step/scale controls for zooming the grid -->
+            <div class="graph-step-control" id="graphStepControl">
+              <button id="stepZoomOut" title="Zoom out">−</button>
+              <span class="step-label" id="stepScaleLabel">1.0</span>
+              <button id="stepZoomIn" title="Zoom in">+</button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <!-- Graphing mode keypad — DESMOS-STYLE LAYOUT
+           Each row has three groups separated by gaps:
+             left   = symbols/functions  (x y a² aᵇ · ( ) < > · |a| , ≤ ≥ · ABC 🔊 √ π)
+             middle = numbers & operators (7 8 9 ÷ · 4 5 6 × · 1 2 3 − · 0 . = +)
+             right  = actions            (Functions · ← → · ⌫ · ⏎)
+           The Functions key opens a popover with the full function library;
+           the ABC key opens a letters strip (a–z slider variables). -->
+      <div class="graph-4func">
+        <!-- Functions popover (toggled by the Functions key) -->
+        <div class="gkp-popover" id="gkpFunctions">
+          <div class="gkp-popover-grid">
+            <button type="button" class="key-btn func" data-action="sin">sin</button>
+            <button type="button" class="key-btn func" data-action="cos">cos</button>
+            <button type="button" class="key-btn func" data-action="tan">tan</button>
+            <button type="button" class="key-btn func" data-action="asin">asin</button>
+            <button type="button" class="key-btn func" data-action="acos">acos</button>
+            <button type="button" class="key-btn func" data-action="atan">atan</button>
+            <button type="button" class="key-btn func" data-action="sinh">sinh</button>
+            <button type="button" class="key-btn func" data-action="cosh">cosh</button>
+            <button type="button" class="key-btn func" data-action="tanh">tanh</button>
+            <button type="button" class="key-btn func" data-action="log">log</button>
+            <button type="button" class="key-btn func" data-action="ln">ln</button>
+            <button type="button" class="key-btn func" data-action="exp">eˣ</button>
+            <button type="button" class="key-btn func" data-action="cbrt">∛</button>
+            <button type="button" class="key-btn func" data-action="nthroot">ⁿ√</button>
+            <button type="button" class="key-btn func" data-action="ncr">nCr</button>
+            <button type="button" class="key-btn func" data-action="npr">nPr</button>
+            <button type="button" class="key-btn func" data-action="fact">!</button>
+            <button type="button" class="key-btn num" data-action="t">t</button>
+            <button type="button" class="key-btn num" data-action="theta">θ</button>
+            <button type="button" class="key-btn del" data-action="clear">AC</button>
+          </div>
+        </div>
+        <!-- ABC letters strip (toggled by the ABC key) — slider variables a–z -->
+        <div class="gkp-letters" id="gkpLetters">
+          <button type="button" class="key-btn alpha" data-action="a">a</button>
+          <button type="button" class="key-btn alpha" data-action="b">b</button>
+          <button type="button" class="key-btn alpha" data-action="c">c</button>
+          <button type="button" class="key-btn alpha" data-action="d">d</button>
+          <button type="button" class="key-btn alpha" data-action="e">e</button>
+          <button type="button" class="key-btn alpha" data-action="f">f</button>
+          <button type="button" class="key-btn alpha" data-action="g">g</button>
+          <button type="button" class="key-btn alpha" data-action="h">h</button>
+          <button type="button" class="key-btn alpha" data-action="i">i</button>
+          <button type="button" class="key-btn alpha" data-action="j">j</button>
+          <button type="button" class="key-btn alpha" data-action="k">k</button>
+          <button type="button" class="key-btn alpha" data-action="l">l</button>
+          <button type="button" class="key-btn alpha" data-action="m">m</button>
+          <button type="button" class="key-btn alpha" data-action="n">n</button>
+          <button type="button" class="key-btn alpha" data-action="o">o</button>
+          <button type="button" class="key-btn alpha" data-action="p">p</button>
+          <button type="button" class="key-btn alpha" data-action="q">q</button>
+          <button type="button" class="key-btn alpha" data-action="r">r</button>
+          <button type="button" class="key-btn alpha" data-action="s">s</button>
+          <button type="button" class="key-btn alpha" data-action="u">u</button>
+          <button type="button" class="key-btn alpha" data-action="v">v</button>
+          <button type="button" class="key-btn alpha" data-action="w">w</button>
+          <button type="button" class="key-btn alpha" data-action="z">z</button>
+        </div>
+        <div class="graph-keypad">
+          <!-- Row 1: x y a² aᵇ | 7 8 9 ÷ | Functions -->
+          <div class="gkp-row">
+            <div class="gkp-group">
+              <button type="button" class="key-btn num" data-action="x">x</button>
+              <button type="button" class="key-btn num" data-action="y">y</button>
+              <button type="button" class="key-btn func" data-action="square">a²</button>
+              <button type="button" class="key-btn func" data-action="power">aᵇ</button>
+            </div>
+            <div class="gkp-gap"></div>
+            <div class="gkp-group">
+              <button type="button" class="key-btn num" data-action="7">7</button>
+              <button type="button" class="key-btn num" data-action="8">8</button>
+              <button type="button" class="key-btn num" data-action="9">9</button>
+              <button type="button" class="key-btn op" data-action="divide">÷</button>
+            </div>
+            <div class="gkp-gap"></div>
+            <div class="gkp-actions">
+              <button type="button" class="key-btn func" data-action="functions">fx</button>
+            </div>
+          </div>
+          <!-- Row 2: ( ) < > | 4 5 6 × | ← → -->
+          <div class="gkp-row">
+            <div class="gkp-group">
+              <button type="button" class="key-btn func" data-action="lparen">(</button>
+              <button type="button" class="key-btn func" data-action="rparen">)</button>
+              <button type="button" class="key-btn func" data-action="less">&lt;</button>
+              <button type="button" class="key-btn func" data-action="greater">&gt;</button>
+            </div>
+            <div class="gkp-gap"></div>
+            <div class="gkp-group">
+              <button type="button" class="key-btn num" data-action="4">4</button>
+              <button type="button" class="key-btn num" data-action="5">5</button>
+              <button type="button" class="key-btn num" data-action="6">6</button>
+              <button type="button" class="key-btn op" data-action="multiply">×</button>
+            </div>
+            <div class="gkp-gap"></div>
+            <div class="gkp-actions gkp-actions-2">
+              <button type="button" class="key-btn func" data-action="left">←</button>
+              <button type="button" class="key-btn func" data-action="right">→</button>
+            </div>
+          </div>
+          <!-- Row 3: |a| , ≤ ≥ | 1 2 3 − | ⌫ -->
+          <div class="gkp-row">
+            <div class="gkp-group">
+              <button type="button" class="key-btn func" data-action="abs">|a|</button>
+              <button type="button" class="key-btn func" data-action="comma">,</button>
+              <button type="button" class="key-btn func" data-action="leq">≤</button>
+              <button type="button" class="key-btn func" data-action="geq">≥</button>
+            </div>
+            <div class="gkp-gap"></div>
+            <div class="gkp-group">
+              <button type="button" class="key-btn num" data-action="1">1</button>
+              <button type="button" class="key-btn num" data-action="2">2</button>
+              <button type="button" class="key-btn num" data-action="3">3</button>
+              <button type="button" class="key-btn op" data-action="subtract">−</button>
+            </div>
+            <div class="gkp-gap"></div>
+            <div class="gkp-actions">
+              <button type="button" class="key-btn del" data-action="backspace">⌫</button>
+            </div>
+          </div>
+          <!-- Row 4: ABC 🔊 √ π | 0 . = + | ⏎ -->
+          <div class="gkp-row">
+            <div class="gkp-group">
+              <button type="button" class="key-btn func" data-action="abc">ABC</button>
+              <button type="button" class="key-btn func" data-action="audio">🔊</button>
+              <button type="button" class="key-btn func" data-action="sqrt">√</button>
+              <button type="button" class="key-btn special" data-action="constant_pi">π</button>
+            </div>
+            <div class="gkp-gap"></div>
+            <div class="gkp-group">
+              <button type="button" class="key-btn num" data-action="0">0</button>
+              <button type="button" class="key-btn num" data-action="decimal">.</button>
+              <button type="button" class="key-btn eq" data-action="equals">=</button>
+              <button type="button" class="key-btn op" data-action="add">+</button>
+            </div>
+            <div class="gkp-gap"></div>
+            <div class="gkp-actions">
+              <button type="button" class="key-btn eq" data-action="enter">⏎</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══ KEYPAD AREA (4-Function & Scientific modes) ═══ -->
+    <div class="keypad-area">
+      <!-- ─── 4-Function Keypad: FreeCalc-style layout (4 columns, operators right) ─── -->
+      <div class="keypad-4func">
+        <div class="panel-grid cols-4">
+          <button type="button" class="key-btn del" data-action="clear">AC</button>
+          <button type="button" class="key-btn del" data-action="backspace">⌫</button>
+          <button type="button" class="key-btn func" data-action="lparen">(</button>
+          <button type="button" class="key-btn func" data-action="rparen">)</button>
+          <button type="button" class="key-btn func" data-action="sqrt">√</button>
+          <button type="button" class="key-btn func" data-action="negate">(−)</button>
+          <button type="button" class="key-btn func" data-action="ans">ans</button>
+          <button type="button" class="key-btn op" data-action="divide">÷</button>
+          <button type="button" class="key-btn num" data-action="7">7</button>
+          <button type="button" class="key-btn num" data-action="8">8</button>
+          <button type="button" class="key-btn num" data-action="9">9</button>
+          <button type="button" class="key-btn op" data-action="multiply">×</button>
+          <button type="button" class="key-btn num" data-action="4">4</button>
+          <button type="button" class="key-btn num" data-action="5">5</button>
+          <button type="button" class="key-btn num" data-action="6">6</button>
+          <button type="button" class="key-btn op" data-action="subtract">−</button>
+          <button type="button" class="key-btn num" data-action="1">1</button>
+          <button type="button" class="key-btn num" data-action="2">2</button>
+          <button type="button" class="key-btn num" data-action="3">3</button>
+          <button type="button" class="key-btn op" data-action="add">+</button>
+          <button type="button" class="key-btn num" data-action="0">0</button>
+          <button type="button" class="key-btn num" data-action="decimal">.</button>
+          <button type="button" class="key-btn eq" data-action="equals">=</button>
+        </div>
+      </div>
+
+      <!-- ─── Scientific Keypad: FreeCalc scientific layout (main / abc / func) ─── -->
+      <div class="keypad-sci">
+        <!-- FreeCalc-style toolbar: AC sits top-right of the keypad -->
+        <div class="sci-toolbar">
+          <button type="button" class="key-btn del sci-ac" data-action="clear">AC</button>
+        </div>
+
+        <!-- Main panel — EXACT FreeCalc scientific main keyboard:
+             x² xʸ |x|  7 8 9 ÷   % a/b
+             √ ⁿ√ π    4 5 6 ×   ← →
+             sin cos tan 1 2 3 −  ⌫
+             ( ) ,  0 . ans +   =        -->
+        <div class="keypad-panel active" id="panel-main">
+          <div class="panel-grid cols-11">
+            <button type="button" class="key-btn func" data-action="square">x²</button>
+            <button type="button" class="key-btn func" data-action="power">xʸ</button>
+            <button type="button" class="key-btn func" data-action="abs">|x|</button>
+            <span class="key-gap"></span>
+            <button type="button" class="key-btn num" data-action="7">7</button>
+            <button type="button" class="key-btn num" data-action="8">8</button>
+            <button type="button" class="key-btn num" data-action="9">9</button>
+            <button type="button" class="key-btn op" data-action="divide">÷</button>
+            <span class="key-gap"></span>
+            <button type="button" class="key-btn func" data-action="percent">%</button>
+            <button type="button" class="key-btn func" data-action="fraction"><span style="font-size:0.7rem"><sup>a</sup>⁄<sub>b</sub></span></button>
+
+            <button type="button" class="key-btn func" data-action="sqrt">√</button>
+            <button type="button" class="key-btn func" data-action="nthroot">ⁿ√</button>
+            <button type="button" class="key-btn special" data-action="constant_pi">π</button>
+            <span class="key-gap"></span>
+            <button type="button" class="key-btn num" data-action="4">4</button>
+            <button type="button" class="key-btn num" data-action="5">5</button>
+            <button type="button" class="key-btn num" data-action="6">6</button>
+            <button type="button" class="key-btn op" data-action="multiply">×</button>
+            <span class="key-gap"></span>
+            <button type="button" class="key-btn func" data-action="left">←</button>
+            <button type="button" class="key-btn func" data-action="right">→</button>
+
+            <button type="button" class="key-btn func" data-action="sin">sin</button>
+            <button type="button" class="key-btn func" data-action="cos">cos</button>
+            <button type="button" class="key-btn func" data-action="tan">tan</button>
+            <span class="key-gap"></span>
+            <button type="button" class="key-btn num" data-action="1">1</button>
+            <button type="button" class="key-btn num" data-action="2">2</button>
+            <button type="button" class="key-btn num" data-action="3">3</button>
+            <button type="button" class="key-btn op" data-action="subtract">−</button>
+            <span class="key-gap"></span>
+            <span class="key-gap"></span>
+            <button type="button" class="key-btn del" data-action="backspace">⌫</button>
+
+            <button type="button" class="key-btn func" data-action="lparen">(</button>
+            <button type="button" class="key-btn func" data-action="rparen">)</button>
+            <button type="button" class="key-btn func" data-action="comma">,</button>
+            <span class="key-gap"></span>
+            <button type="button" class="key-btn num" data-action="0">0</button>
+            <button type="button" class="key-btn num" data-action="decimal">.</button>
+            <button type="button" class="key-btn func" data-action="ans">ans</button>
+            <button type="button" class="key-btn op" data-action="add">+</button>
+            <span class="key-gap"></span>
+            <button type="button" class="key-btn eq eq-wide" data-action="equals">=</button>
+          </div>
+        </div>
+
+        <!-- ABC panel — EXACT FreeCalc QWERTY keyboard:
+             q w e r t y u i o p
+               a s d f g h j k l     (half-indented)
+             = z x c v b n m , ⌫
+             shift ( ) [ ] ! ' π enter      -->
+        <div class="keypad-panel" id="panel-abc">
+          <div class="abc-rows">
+            <div class="abc-row">
+              <button type="button" class="key-btn alpha" data-action="q">q</button>
+              <button type="button" class="key-btn alpha" data-action="w">w</button>
+              <button type="button" class="key-btn alpha" data-action="e">e</button>
+              <button type="button" class="key-btn alpha" data-action="r">r</button>
+              <button type="button" class="key-btn alpha" data-action="t">t</button>
+              <button type="button" class="key-btn alpha" data-action="y">y</button>
+              <button type="button" class="key-btn alpha" data-action="u">u</button>
+              <button type="button" class="key-btn alpha" data-action="i">i</button>
+              <button type="button" class="key-btn alpha" data-action="o">o</button>
+              <button type="button" class="key-btn alpha" data-action="p">p</button>
+            </div>
+            <div class="abc-row abc-indent-half">
+              <button type="button" class="key-btn alpha" data-action="a">a</button>
+              <button type="button" class="key-btn alpha" data-action="s">s</button>
+              <button type="button" class="key-btn alpha" data-action="d">d</button>
+              <button type="button" class="key-btn alpha" data-action="f">f</button>
+              <button type="button" class="key-btn alpha" data-action="g">g</button>
+              <button type="button" class="key-btn alpha" data-action="h">h</button>
+              <button type="button" class="key-btn alpha" data-action="j">j</button>
+              <button type="button" class="key-btn alpha" data-action="k">k</button>
+              <button type="button" class="key-btn alpha" data-action="l">l</button>
+            </div>
+            <div class="abc-row">
+              <button type="button" class="key-btn func" data-action="equals">=</button>
+              <button type="button" class="key-btn alpha" data-action="z">z</button>
+              <button type="button" class="key-btn alpha" data-action="x">x</button>
+              <button type="button" class="key-btn alpha" data-action="c">c</button>
+              <button type="button" class="key-btn alpha" data-action="v">v</button>
+              <button type="button" class="key-btn alpha" data-action="b">b</button>
+              <button type="button" class="key-btn alpha" data-action="n">n</button>
+              <button type="button" class="key-btn alpha" data-action="m">m</button>
+              <button type="button" class="key-btn func" data-action="comma">,</button>
+              <button type="button" class="key-btn del" data-action="backspace">⌫</button>
+            </div>
+            <div class="abc-row abc-shift-row">
+              <button type="button" class="key-btn func" data-action="shift">⇧</button>
+              <button type="button" class="key-btn func" data-action="lparen">(</button>
+              <button type="button" class="key-btn func" data-action="rparen">)</button>
+              <button type="button" class="key-btn func" data-action="lbracket">[</button>
+              <button type="button" class="key-btn func" data-action="rbracket">]</button>
+              <button type="button" class="key-btn func" data-action="fact">!</button>
+              <button type="button" class="key-btn func" data-action="apostrophe">'</button>
+              <button type="button" class="key-btn special" data-action="constant_pi">π</button>
+              <button type="button" class="key-btn eq" data-action="equals">enter</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Func panel — EXACT FreeCalc scientific function keyboard:
+             sin cos tan  xʸ √ ⁿ√
+             arcsin arccos arctan  eˣ |x| round
+             mean stdev stdevp  ln log ⌫
+             nPr nCr !  e π enter         -->
+        <div class="keypad-panel" id="panel-funct">
+          <div class="panel-grid cols-7">
+            <button type="button" class="key-btn func" data-action="sin">sin</button>
+            <button type="button" class="key-btn func" data-action="cos">cos</button>
+            <button type="button" class="key-btn func" data-action="tan">tan</button>
+            <span class="key-gap"></span>
+            <button type="button" class="key-btn func" data-action="power">xʸ</button>
+            <button type="button" class="key-btn func" data-action="sqrt">√</button>
+            <button type="button" class="key-btn func" data-action="nthroot">ⁿ√</button>
+
+            <button type="button" class="key-btn func" data-action="asin">arcsin</button>
+            <button type="button" class="key-btn func" data-action="acos">arccos</button>
+            <button type="button" class="key-btn func" data-action="atan">arctan</button>
+            <span class="key-gap"></span>
+            <button type="button" class="key-btn func" data-action="exp">eˣ</button>
+            <button type="button" class="key-btn func" data-action="abs">|x|</button>
+            <button type="button" class="key-btn func" data-action="round">round</button>
+
+            <button type="button" class="key-btn func" data-action="mean">mean</button>
+            <button type="button" class="key-btn func" data-action="stdev">stdev</button>
+            <button type="button" class="key-btn func" data-action="stdevp">stdevp</button>
+            <span class="key-gap"></span>
+            <button type="button" class="key-btn func" data-action="ln">ln</button>
+            <button type="button" class="key-btn func" data-action="log">log</button>
+            <button type="button" class="key-btn del" data-action="backspace">⌫</button>
+
+            <button type="button" class="key-btn func" data-action="npr">nPr</button>
+            <button type="button" class="key-btn func" data-action="ncr">nCr</button>
+            <button type="button" class="key-btn func" data-action="fact">!</button>
+            <span class="key-gap"></span>
+            <button type="button" class="key-btn special" data-action="constant_e">e</button>
+            <button type="button" class="key-btn special" data-action="constant_pi">π</button>
+            <button type="button" class="key-btn eq" data-action="equals">=</button>
+          </div>
+        </div>
+
+        <!-- Keypad tabs sit at the BOTTOM (FreeCalc-style) -->
+        <div class="keypad-tabs keypad-tabs-bottom">
+          <button type="button" class="keypad-tab active" data-panel="main">main</button>
+          <button type="button" class="keypad-tab" data-panel="abc">abc</button>
+          <button type="button" class="keypad-tab" data-panel="funct">func</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="calc-footer">⌨ Keyboard · sin, cos, sinh, nCr, nPr, ceil, floor, τ</div>
+  </div>    <!-- ═══════════════════════════════════════════════════════════════════════════════
+       JAVASCRIPT — ES modules (load order matters for execution):
+       engine.js → mathml-renderer.js → ui.js → graph.js → main.js
+       NOTE: because these are ES modules, open this page through a local server
+       (e.g. `python -m http.server` or the included start.bat) — browsers block
+       module scripts when opened directly via file://.
+       ═══════════════════════════════════════════════════════════════════════════════ -->
+  <script type="module" src="engine.js"></script>
+  <script type="module" src="mathml-renderer.js"></script>
+  <script type="module" src="ui.js"></script>
+  <script type="module" src="graph.js"></script>
+  <script type="module" src="main.js"></script>
+
+
+</body>
+</html>
