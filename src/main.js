@@ -125,7 +125,7 @@
         if (key === 'θ') { handleGraphKeypad('theta'); e.preventDefault(); return; }
         if (/^[a-z]$/i.test(key)) { handleGraphKeypad(key.toLowerCase()); e.preventDefault(); return; }  // letters = slider vars
         // Enter commits the row (like ⏎); '=' maps to the keypad '=' which
-        // INSERTS an equals sign (Desmos-style) — the shared map keys both to
+        // INSERTS an equals sign — the shared map keys both to
         // 'equals', so override Enter here to keep commit semantics.
         if (key === 'Enter') { handleGraphKeypad('enter'); e.preventDefault(); return; }
         if (map[key]) { handleGraphKeypad(map[key]); e.preventDefault(); return; }

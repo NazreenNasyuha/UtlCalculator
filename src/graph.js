@@ -436,8 +436,8 @@
         if (depth < 0) return 'Unbalanced ")"';
       }
       if (depth !== 0) return 'Missing ")"';
-      // Inequalities aren't supported yet — the Desmos keypad's <, >, ≤, ≥
-      // keys insert these chars, so give a friendly hint instead of a bare
+      // Inequalities aren't supported yet — the keypad's <, >, ≤, ≥ keys
+      // insert these chars, so give a friendly hint instead of a bare
       // "Invalid" error. (Equations with '=' are fine and unaffected.)
       if (/[<>≤≥]/.test(String(text))) {
         return 'Inequalities ( <, >, ≤, ≥ ) are not supported yet — try an equation like "y = x^2"';
@@ -1129,8 +1129,8 @@
     // ── INTEGRAL ANIMATION ──
     // Integral rows get a ▶ button that sweeps the bound slider letter
     // (a or b) from its current value up to its max over ~3s with easing,
-    // re-rendering live so the shaded area visibly grows — like Desmos's
-    // slider play. Clicking again (⏸) stops it.
+    // re-rendering live so the shaded area visibly grows — a classic
+    // slider-play animation. Clicking again (⏸) stops it.
     let integralAnim = null;
     // Reset every ▶/⏸ label in the list (used when switching rows or stopping)
     function resetAnimButtons() {
@@ -1149,8 +1149,8 @@
       // Stop an in-flight animation (and reset every label — a different row
       // may have been animating with a stale ⏸ icon). If the same row was
       // animating, this click is a toggle-off; otherwise fall through and
-      // start the NEW row's animation (Desmos-like: ▶ on another row moves
-      // the animation there).
+      // start the NEW row's animation (▶ on another row moves the animation
+      // there, graphing-calculator style).
       if (integralAnim) {
         const wasSameRow = integralAnim.i === i;
         cancelAnimationFrame(integralAnim.raf);
@@ -1596,7 +1596,7 @@
 
       // ── Panel toggles (no expression row needed) ──
       // The Functions popover and ABC letters strip live above the keypad;
-      // clicking their keys toggles them open/closed (Desmos-style).
+      // clicking their keys toggles them open/closed.
       if (action === 'functions') {
         const pop = document.getElementById('gkpFunctions');
         const letters = document.getElementById('gkpLetters');
@@ -1626,8 +1626,8 @@
         'sqrt':'sqrt(','square':'^2','comma':',',
         'less':'<','greater':'>','leq':'<=','geq':'>=',
         'constant_pi':'π','constant_e':'e','theta':'θ',
-        'equals':'=',      // Desmos-style: the keypad '=' INSERTS '=' so you
-                           // can type y = x^2 row-by-row; only ⏎/enter commits.
+        'equals':'=',      // the keypad '=' INSERTS '=' so you can type
+                           // y = x^2 row-by-row; only ⏎/enter commits.
       };
 
       // Find the focused row input, or fall back to the active/last row
@@ -1638,10 +1638,11 @@
         const idx = graphState.activeIndex >= 0 ? graphState.activeIndex : graphState.expressions.length - 1;
         const row = graphExprList.children[idx];
         if (row) input = row.querySelector('.expr-input');
-        // Desmos behavior: when nothing is actively selected and the last row
-        // already holds a completed expression, start a FRESH row below it
-        // instead of appending onto the finished one. Only for text-insertion
-        // actions — edit/navigation keys (⌫ ← → clear, enter) still target the
+        // Graphing-calculator behavior: when nothing is actively selected and
+        // the last row already holds a completed expression, start a FRESH row
+        // below it instead of appending onto the finished one. Only for
+        // text-insertion actions — edit/navigation keys (⌫ ← → clear, enter)
+        // still target the
         // last row so they don't spawn spurious empty rows.
         const isInsert = insertMap[action] !== undefined || /^[a-zA-Z]$/.test(action);
         if (isInsert && input && graphState.activeIndex === -1 && !isEmptyExpression(input.value)) {
@@ -1669,7 +1670,7 @@
         }
         input.focus();
       };
-      // Cursor movement inside the expression row (Desmos ← → keys)
+      // Cursor movement inside the expression row (← → keys)
       const moveCursor = (dir) => {
         const pos = input.selectionStart != null ? input.selectionStart : input.value.length;
         input.setSelectionRange(Math.max(0, Math.min(input.value.length, pos + dir)),

@@ -36,3 +36,6 @@ _inject.js
 
 # ── Logs ─────────────────────────────────────────────────
 *.log
+
+# ── GitHub Pages site folder (created by the Actions workflow) ──
+_site/

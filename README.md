@@ -9,6 +9,39 @@ JavaScript ES modules.
 
 ---
 
+## 🚀 Try it right now — three ways
+
+There are **three** ways to run FreeCalc, from "zero effort" to "full dev setup":
+
+| # | Way | What the person does | You need to do |
+|---|-----|----------------------|----------------|
+| 1 | **Live link (GitHub Pages)** | Opens a URL in any browser — no download, works on phones | Deploy once (see below) |
+| 2 | **Single-file download** | Downloads ONE `.html` file and double-clicks it — works offline, no installs | Rebuild after code changes |
+| 3 | **Run from source** | Downloads the ZIP and serves the folder (needs Python or Node) | Nothing extra |
+
+**Live link** — the repo is set up to auto-deploy to GitHub Pages on every push:
+`https://<your-username>.github.io/UtlCalculator/`
+(one-time setup: repo **Settings → Pages → Source: GitHub Actions**).
+
+**Single-file download** — grab `FreeCalc-single-file.html` from the repo root (or the
+latest release) and double-click it. It has every script + the stylesheet inlined,
+so it runs from `file://` with no server. To regenerate it after editing `src/`:
+
+```bash
+node build-single-file.js     # → regenerates FreeCalc-single-file.html
+```
+
+**Run from source** — clone/download the repo and serve `src/` over HTTP (ES
+modules won't load over `file://`):
+
+```bash
+cd src
+python -m http.server 8000    # then open http://localhost:8000/calculator.html
+# or double-click serve.bat (Windows, one click)
+```
+
+---
+
 ## ✨ Features
 
 ### Calculator
@@ -71,16 +104,17 @@ JavaScript ES modules.
 - **Session persistence** — expressions, slider values, viewport, t/θ ranges
   and the aspect lock are saved to `localStorage` (debounced) and restored on
   reload, so your graph is exactly where you left it
-- **Desmos-style keypad** — the graphing keypad is laid out like Desmos's
-  (4 rows × 3 groups): `x y a² a^b` `7 8 9 ÷` `fx` ; `( ) < >` `4 5 6 ×` `← →` ;
+- **Three-group graphing keypad** — the graphing keypad is laid out like a
+  professional graphing calculator's (4 rows × 3 groups): `x y a² a^b`
+  `7 8 9 ÷` `fx` ; `( ) < >` `4 5 6 ×` `← →` ;
   `|a| , ≤ ≥` `1 2 3 −` `⌫` ; `ABC 🔊 √ π` `0 . = +` `⏎`. The `fx` key opens a
   **Functions popover** (sin, cos, tan, asin, acos, atan, sinh, cosh, tanh,
   log, ln, exp, cbrt, nthroot, nCr, nPr, !, t, θ, AC), the `ABC` key opens a
   **letters strip** (a–z slider variables), and 🔊 toggles key sounds. With no
   row selected, typing starts a fresh row instead of appending to a completed
-  one (just like Desmos). The keypad `=` key **inserts** an equals sign so you
+  one. The keypad `=` key **inserts** an equals sign so you
   can type `y = x^2` in one row — only `⏎`/Enter commits and opens the next row.
-  Note: the `< > ≤ ≥` keys are part of the Desmos layout but the engine doesn't
+  Note: the `< > ≤ ≥` keys are part of the layout but the engine doesn't
   support inequalities yet — they show a friendly "not supported" hint instead
   of a bare error
 - **Keyboard tracing** — with trace mode on, the **← → arrow keys** step the
@@ -162,7 +196,11 @@ Calculator Project/
 │   ├── test_calculus.js             # higher derivatives, integrals & trace checks
 │   ├── test_implicit.js             # implicit-curve detection + equation math
 │   ├── test_ui_structure.js         # HTML markup structure check
+│   ├── test_single_file.js          # executes the bundled single-file in Node
 │   └── verify_mathml_render.js      # MathML render verification
+├── build-single-file.js      # bundles the app into ONE standalone HTML file
+├── FreeCalc-single-file.html # 📦 the build output — download & double-click
+├── .github/workflows/pages.yml  # auto-deploys to GitHub Pages on push
 ├── README.md
 └── .gitignore
 ```
@@ -282,12 +320,79 @@ analytic values, and **6,000 randomized integrals** (`xⁿ`, `sin`, `cos`, `eˣ`
 
 ---
 
+## 🧭 Reading guide — where to start (for learners)
+
+The codebase is written to be read like a textbook. The files form a **dependency
+chain**, so read them in this order and each one will make sense:
+
+```
+engine.js → mathml-renderer.js → ui.js → graph.js → main.js
+  (math)        (display)         (buttons)   (canvas)    (boot)
+```
+
+### 1. `src/engine.js` — the brain (start here)
+
+A classic 3-step expression pipeline, fully commented:
+
+1. **`tokenize()`** — splits `"2+3*4"` into tokens `[2][+][3][*][4]` (handles
+   scientific notation, implicit multiplication `2pi`, identifier splitting `xsin`).
+2. **`toRPN()`** — the **shunting-yard algorithm** converts infix to Reverse
+   Polish Notation; precedence comes from a table, not hard-coded cases.
+3. **`evaluateRPN()`** — walks the RPN stack applying operators as it goes.
+
+Read this first because **every other file calls `evaluate()`** — understand it
+and you understand the whole app.
+
+### 2. `src/mathml-renderer.js` — textbook display (small, quick win)
+
+Turns `"2+3*4"` into real MathML so the display looks like a textbook, not a
+flat string. Great first file to read fully — it's only ~100 lines.
+
+### 3. `src/ui.js` — buttons, sounds, themes
+
+Ties keypad buttons to engine calls. Look for `handleAction()` — the single
+function every button click funnels through.
+
+### 4. `src/graph.js` — the graphing engine (biggest file)
+
+`parseGraphExpression()` decides what kind of curve a row is (cartesian,
+parametric, polar, implicit, derivative, integral, tangent). `drawScene()` does
+the actual canvas drawing. The **numeric derivative** and **Simpson's rule
+integral** are pure functions — easy to read, easy to test.
+
+### 5. `src/main.js` — wiring it all together
+
+Boots the app and connects events. `switchMode()` lives here (not ui.js) so it
+can call `initGraph()` without a circular import.
+
+### The `tests/` folder is your friend
+
+Every test file has a header comment explaining **what** it verifies and **why**.
+They extract the real engine code and run thousands of equations against it —
+read one test file and you'll see exactly how the engine is *supposed* to behave.
+
+### Suggested exercises
+
+1. Add a new function (e.g. `cube`) — find where `sin` is handled in the engine
+   and in the keypad, add both, run the tests.
+2. Change the graph's default color palette in `state.graphColors` and watch
+   every new curve pick it up.
+3. Trace how `2pi` becomes a number: `tokenize` → `toRPN` → `evaluateRPN`.
+4. Write a test file like `tests/test_engine_fixes.js` for a function you add.
+
+---
+
 ## 🛠 GitHub-ready
 
-- `.gitignore` excludes junk (`.DS_Store`, `Thumbs.db`, `_split_helper.js`-style
-  scratch files, `*.tmp`).
-- No `node_modules`, no build step, no external dependencies — clone & serve.
-- `serve.bat` makes local preview one double-click on Windows.
+- **One-command Pages deploy** — `.github/workflows/pages.yml` rebuilds the
+  single-file bundle and deploys it to GitHub Pages on every push to `main`.
+- **Single-file build** — `build-single-file.js` inlines all modules + CSS into
+  `FreeCalc-single-file.html` (works from `file://`). Validated by
+  `tests/test_single_file.js`, which executes the bundle in Node.
+- `.gitignore` excludes junk (`.DS_Store`, `Thumbs.db`, scratch files, `_site/`).
+- No `node_modules`, no external dependencies — **running from source needs no
+  build** (clone & serve). The standalone `FreeCalc-single-file.html` is a
+  pre-generated bonus, refreshed by the build script and verified fresh in CI.
 
 ---
 

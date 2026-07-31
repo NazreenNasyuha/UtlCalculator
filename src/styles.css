@@ -446,7 +446,7 @@
     .calc.mode-graphing .graph-4func { display: block; }
     .calc.mode-graphing .display { display: none; }         /* Hide regular display */
 
-    /* ─── Graphing keypad — DESMOS-STYLE (symbols | numbers | actions) ─── */
+    /* ─── Graphing keypad — three groups (symbols | numbers | actions) ─── */
     .graph-keypad { display: flex; flex-direction: column; gap: 0.3rem; padding: 0.3rem 0; }
     .gkp-row {
       display: flex; gap: 0.3rem; align-items: stretch;
