@@ -49,6 +49,10 @@ jobs:
       - name: Verify committed bundle is fresh
         run: git diff --exit-code -- FreeCalc-single-file.html
 
+      # Prove the artifact actually boots and computes (not just that it builds)
+      - name: Run bundle smoke test
+        run: node tests/test_single_file.js
+
       # Assemble the site root: the standalone app + the src/ source files
       - name: Prepare site
         run: |

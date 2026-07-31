@@ -4189,6 +4189,14 @@
     
     
 
+    // Read a localStorage value without ever throwing — on file:// some
+    // browsers deny storage access outright, so every read must be optional.
+    // (Used below at boot for the saved theme + angle mode.)
+    function safeGet(key) {
+      try { return localStorage.getItem(key); }
+      catch (e) { return null; }
+    }
+
     // ─── MODE SWITCHING (4-Function / Scientific / Graphing) ───
     function switchMode(mode) {
       state.calcMode = mode;
@@ -4359,11 +4367,14 @@
       void themeBtn.offsetWidth;          // restart the animation
       themeBtn.classList.add('spin');
     });
-    // Load saved theme on startup
-    const savedTheme = localStorage.getItem('calc-theme');
+    // Load saved theme on startup. localStorage is wrapped in a try/catch:
+    // some browsers throw a SecurityError when the app is opened over file://
+    // (the single-file download!), and the app must still boot if storage is
+    // blocked — a saved theme is a nice-to-have, not a requirement.
+    const savedTheme = safeGet('calc-theme');
     if (savedTheme) setTheme(savedTheme);
     // Load saved angle mode
-    const savedAngle = localStorage.getItem('calc-angle');
+    const savedAngle = safeGet('calc-angle');
     if (savedAngle) { state.angleMode = savedAngle; angleModeBtn.textContent = savedAngle; }
 
     // ═══════════════════════════════════════════════════════════════
