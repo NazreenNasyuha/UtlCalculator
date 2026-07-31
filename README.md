@@ -1,4 +1,4 @@
-# 🧮 FreeCalc — Scientific Calculator + Graphing Calculator
+# 🧮 UltCalc — Scientific Calculator + Graphing Calculator
 
 A feature-packed scientific calculator with a textbook-quality **MathML expression
 display** and a **full graphing calculator** — all in a single-page web app
