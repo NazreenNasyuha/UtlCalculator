@@ -90,7 +90,7 @@
         <div class="graph-sidebar">
           <div class="graph-expr-list" id="graphExprList"></div>
           <!-- Adds a new empty expression row (like the + of a graphing calculator) -->
-          <button type="button" class="graph-add-btn" id="graphAddBtn" title="Add expression">＋</button>
+          <button type="button" class="graph-add-btn" id="graphAddBtn" title="Add expression">＋ Add equation</button>
           <!-- ─── Viewport + sampling range controls ───
                x/y rows = visible viewport bounds (pan/zoom also change these)
                t/θ rows = sampling ranges for parametric & polar curves -->
@@ -185,7 +185,7 @@
       </div>
       <!-- Graphing mode keypad — THREE-GROUP LAYOUT
            Each row has three groups separated by gaps:
-             left   = symbols/functions  (x y a² aᵇ · ( ) < > · |a| , ≤ ≥ · ABC 🔊 √ π)
+             left   = symbols/functions  (x y a² aᵇ · ( ) < > · |a| , ≤ ≥ · ABC √ π)
              middle = numbers & operators (7 8 9 ÷ · 4 5 6 × · 1 2 3 − · 0 . = +)
              right  = actions            (Functions · ← → · ⌫ · ⏎)
            The Functions key opens a popover with the full function library;
@@ -304,11 +304,10 @@
               <button type="button" class="key-btn del" data-action="backspace">⌫</button>
             </div>
           </div>
-          <!-- Row 4: ABC 🔊 √ π | 0 . = + | ⏎ -->
+          <!-- Row 4: ABC √ π | 0 . = + | ⏎ -->
           <div class="gkp-row">
             <div class="gkp-group">
               <button type="button" class="key-btn func" data-action="abc">ABC</button>
-              <button type="button" class="key-btn func" data-action="audio">🔊</button>
               <button type="button" class="key-btn func" data-action="sqrt">√</button>
               <button type="button" class="key-btn special" data-action="constant_pi">π</button>
             </div>

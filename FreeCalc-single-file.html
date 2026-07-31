@@ -506,8 +506,6 @@
     }
     .anim-btn:hover { background: var(--btn-num-hover); }
     .anim-btn:active { transform: scale(0.92); }
-    /* Muted audio key (sound off) */
-    .key-btn.muted { opacity: 0.55; }
     .calc.mode-graphing .graph-container { margin-bottom: 0; }
     .calc.mode-graphing .canvas-wrap canvas { height: 260px; }
 
@@ -948,6 +946,24 @@
     }
     .graph-expr-item:hover { border-color: var(--text-muted); }
     .graph-expr-item.active { border-color: var(--tab-indicator); box-shadow: 0 0 0 1px var(--tab-indicator); }
+    /* Blinking "type here" guide on empty rows — a soft pulsing glow + dashed
+       border so it's obvious this is where the equation is entered. */
+    .graph-expr-item.guide {
+      border-style: dashed;
+      border-color: var(--tab-indicator, #58a6ff);
+      animation: expr-guide-blink 1.4s ease-in-out infinite;
+    }
+    @keyframes expr-guide-blink {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(88, 166, 255, 0.0); }
+      50%      { box-shadow: 0 0 0 4px rgba(88, 166, 255, 0.25); }
+    }
+    .graph-expr-item.guide .expr-input::placeholder { color: var(--tab-indicator, #58a6ff); opacity: 0.9; }
+    /* One-time attention pulse on the very first row when the graph opens */
+    .graph-expr-item.attention { animation: expr-attention 1.6s ease 2; }
+    @keyframes expr-attention {
+      0%, 100% { box-shadow: none; }
+      50%      { box-shadow: 0 0 0 5px rgba(88, 166, 255, 0.35); }
+    }
     .graph-expr-item .color-dot {
       width: 12px; height: 12px; border-radius: 50%;
       flex-shrink: 0; cursor: pointer;
@@ -957,9 +973,11 @@
     .graph-expr-item .color-dot.hidden { opacity: 0.2; }
     .graph-expr-item .expr-input {
       flex: 1; background: transparent; border: none; outline: none;
-      font-family: 'Courier New', monospace; font-size: 0.8rem;
+      font-family: 'Courier New', monospace; font-size: 0.85rem;
       color: var(--text-primary); min-width: 0;
+      padding: 2px 0;
     }
+    .graph-expr-item .expr-input:focus { caret-color: var(--tab-indicator, #58a6ff); }
     .graph-expr-item.err .expr-input { color: var(--err-color); }
     .graph-expr-item .expr-value {
       font-size: 0.6rem; color: var(--text-dim); white-space: nowrap;
@@ -981,9 +999,37 @@
       font-family: 'Courier New', monospace;
     }
     .graph-expr-item .expr-slider-row .slider-name { min-width: 14px; flex-shrink: 0; }
+    /* Knob-style slider: a proper grab-handle thumb on a rounded track, so it
+       reads as something you can DRAG — not a generic OS control. */
     .graph-expr-item .expr-slider-row input[type="range"] {
-      flex: 1; height: 4px; accent-color: var(--tab-indicator, #58a6ff);
-      cursor: pointer; min-width: 0;
+      flex: 1; height: 18px; min-width: 0; cursor: pointer;
+      -webkit-appearance: none; appearance: none;
+      background: transparent;
+    }
+    .graph-expr-item .expr-slider-row input[type="range"]::-webkit-slider-runnable-track {
+      height: 6px; border-radius: 999px;
+      background: var(--expr-item-border, rgba(255,255,255,0.18));
+    }
+    .graph-expr-item .expr-slider-row input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none; appearance: none;
+      width: 16px; height: 16px; margin-top: -5px;
+      border-radius: 50%;
+      background: radial-gradient(circle at 35% 30%, #9ec8ff, var(--tab-indicator, #58a6ff) 60%, #2d5f9e);
+      border: 2px solid #fff;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.45);
+      cursor: grab;
+    }
+    .graph-expr-item .expr-slider-row input[type="range"]:active::-webkit-slider-thumb { cursor: grabbing; }
+    .graph-expr-item .expr-slider-row input[type="range"]::-moz-range-track {
+      height: 6px; border-radius: 999px;
+      background: var(--expr-item-border, rgba(255,255,255,0.18));
+    }
+    .graph-expr-item .expr-slider-row input[type="range"]::-moz-range-thumb {
+      width: 16px; height: 16px; border-radius: 50%;
+      background: radial-gradient(circle at 35% 30%, #9ec8ff, var(--tab-indicator, #58a6ff) 60%, #2d5f9e);
+      border: 2px solid #fff;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.45);
+      cursor: grab;
     }
     .graph-expr-item .expr-slider-row .slider-val {
       min-width: 30px; text-align: right; flex-shrink: 0;
@@ -1085,7 +1131,7 @@
         <div class="graph-sidebar">
           <div class="graph-expr-list" id="graphExprList"></div>
           <!-- Adds a new empty expression row (like the + of a graphing calculator) -->
-          <button type="button" class="graph-add-btn" id="graphAddBtn" title="Add expression">＋</button>
+          <button type="button" class="graph-add-btn" id="graphAddBtn" title="Add expression">＋ Add equation</button>
           <!-- ─── Viewport + sampling range controls ───
                x/y rows = visible viewport bounds (pan/zoom also change these)
                t/θ rows = sampling ranges for parametric & polar curves -->
@@ -1180,7 +1226,7 @@
       </div>
       <!-- Graphing mode keypad — THREE-GROUP LAYOUT
            Each row has three groups separated by gaps:
-             left   = symbols/functions  (x y a² aᵇ · ( ) < > · |a| , ≤ ≥ · ABC 🔊 √ π)
+             left   = symbols/functions  (x y a² aᵇ · ( ) < > · |a| , ≤ ≥ · ABC √ π)
              middle = numbers & operators (7 8 9 ÷ · 4 5 6 × · 1 2 3 − · 0 . = +)
              right  = actions            (Functions · ← → · ⌫ · ⏎)
            The Functions key opens a popover with the full function library;
@@ -1299,11 +1345,10 @@
               <button type="button" class="key-btn del" data-action="backspace">⌫</button>
             </div>
           </div>
-          <!-- Row 4: ABC 🔊 √ π | 0 . = + | ⏎ -->
+          <!-- Row 4: ABC √ π | 0 . = + | ⏎ -->
           <div class="gkp-row">
             <div class="gkp-group">
               <button type="button" class="key-btn func" data-action="abc">ABC</button>
-              <button type="button" class="key-btn func" data-action="audio">🔊</button>
               <button type="button" class="key-btn func" data-action="sqrt">√</button>
               <button type="button" class="key-btn special" data-action="constant_pi">π</button>
             </div>
@@ -2415,15 +2460,12 @@
       }
     }
 
-    // Toggle sound on/off and sync every 🔊 button (header toggle + graph
-    // keypad Audio key). Exported so graph.js can wire the keypad key.
+    // Toggle sound on/off and sync the header 🔊 chip. (The graph keypad
+    // used to have its own Audio key — it was removed, so only the header
+    // chip is kept in sync now.)
     function toggleSound() {
       soundOn = !soundOn;
       localStorage.setItem('calc-sound', soundOn ? 'on' : 'off');
-      document.querySelectorAll('[data-action="audio"]').forEach(b => {
-        b.textContent = soundOn ? '🔊' : '🔇';
-        b.classList.toggle('muted', !soundOn);
-      });
       if (soundBtn) soundBtn.textContent = soundOn ? '🔊' : '🔇';
       if (soundOn) playKeySound(false);   // confirmation blip
       return soundOn;
@@ -2433,11 +2475,6 @@
       soundBtn.textContent = soundOn ? '🔊' : '🔇';
       soundBtn.addEventListener('click', toggleSound);
     }
-    // Keep the graph keypad Audio key's icon in sync on load
-    document.querySelectorAll('[data-action="audio"]').forEach(b => {
-      b.textContent = soundOn ? '🔊' : '🔇';
-      b.classList.toggle('muted', !soundOn);
-    });
 
     // ═══════════════════════════════════════════════════════════════
     // THEME TOGGLE (Dark ↔ Light)
@@ -3659,6 +3696,13 @@
         item.className = 'graph-expr-item';
         item.dataset.i = i;
 
+        // Empty rows get a blinking "type here" guide so it's obvious where
+        // to enter the equation. The class is re-evaluated on every keystroke
+        // and on blur (an empty row = the place you should type next).
+        // (input is always created before syncGuide is ever called — it's only
+        // invoked after the row is fully built and on focus/blur/input events)
+        const syncGuide = () => item.classList.toggle('guide', isEmptyExpression(input.value));
+
         // Color dot — click toggles visibility, right-click cycles color
         const dot = document.createElement('span');
         dot.className = 'color-dot' + (expr.visible ? '' : ' hidden');
@@ -3674,7 +3718,7 @@
         input.value = expr.text || '';
         input.spellcheck = false;
         input.autocomplete = 'off';
-        input.placeholder = 'y = x^2 · (cos t, sin t) · r = 2cos(θ) · x^2+y^2 = 25 · y\' = x^3 · tangent(x^2, 2)';
+        input.placeholder = 'type an equation — e.g. y = x^2';
         input.addEventListener('input', () => {
           expr.text = input.value;
           const err = validateExpression(input.value);
@@ -3685,14 +3729,22 @@
           renderGraph();
           updateValuePreviews();
           renderLegend();               // keep the overlay in sync while typing
+          syncGuide();
         });
-        input.addEventListener('focus', () => { graphState.activeIndex = i; item.classList.add('active'); });
+        input.addEventListener('focus', () => {
+          graphState.activeIndex = i;
+          item.classList.add('active');
+          item.classList.remove('guide');   // you found it — stop blinking
+        });
         input.addEventListener('blur', () => {
           item.classList.remove('active');
           // Remove rows left empty (works for cartesian AND polar rows)
+          let removed = false;
           if (isEmptyExpression(expr.text) && graphState.expressions.length > 1) {
-            removeGraphExpression(i);
+            removeGraphExpression(i);        // re-renders the list — item is now detached
+            removed = true;
           }
+          if (!removed) syncGuide();         // empty survivor row blinks again
         });
         input.addEventListener('keydown', (e) => {
           if (e.key === 'Enter') {
@@ -3733,6 +3785,7 @@
         item.appendChild(input);
         item.appendChild(value);
         item.appendChild(slidersWrap);
+        syncGuide();
         // Integral rows with a letter bound get a ▶ button that animates the
         // shaded area (numeric-bound integrals have nothing to sweep)
         const iParsed = parseGraphExpression(expr.text);
@@ -3767,7 +3820,14 @@
           renderGraphExprList();
           renderLegend();
         } else {
-          addGraphExpression('y = sin(x)', { focus: false });
+          // Start with a curve that has a letter parameter (a), so the row
+          // immediately shows a draggable KNOB — new users instantly see the
+          // "slide the equation" affordance the app is built around.
+          addGraphExpression('y = a sin(x)', { focus: false });
+          // One-time attention pulse on the first row — a friendly "look here"
+          // so new users instantly spot where the equation is edited.
+          const firstRow = graphExprList.children[0];
+          if (firstRow) firstRow.classList.add('attention');
         }
       }
       renderGraph();
@@ -4076,7 +4136,6 @@
         if (pop && letters && letters.classList.contains('open')) pop.classList.remove('open');
         return;
       }
-      if (action === 'audio') { toggleSound(); return; }
 
       // What each key inserts into the expression row
       const insertMap = {

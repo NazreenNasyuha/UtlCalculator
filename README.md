@@ -19,9 +19,8 @@ There are **three** ways to run FreeCalc, from "zero effort" to "full dev setup"
 | 2 | **Single-file download** | Downloads ONE `.html` file and double-clicks it — works offline, no installs | Rebuild after code changes |
 | 3 | **Run from source** | Downloads the ZIP and serves the folder (needs Python or Node) | Nothing extra |
 
-**Live link** — the repo is set up to auto-deploy to GitHub Pages on every push:
-`https://<your-username>.github.io/UtlCalculator/`
-(one-time setup: repo **Settings → Pages → Source: GitHub Actions**).
+**Live link** —
+`https://nazreennasyuha.github.io/UtlCalculator/`.
 
 **Single-file download** — grab `FreeCalc-single-file.html` from the repo root (or the
 latest release) and double-click it. It has every script + the stylesheet inlined,
@@ -107,16 +106,21 @@ python -m http.server 8000    # then open http://localhost:8000/calculator.html
 - **Three-group graphing keypad** — the graphing keypad is laid out like a
   professional graphing calculator's (4 rows × 3 groups): `x y a² a^b`
   `7 8 9 ÷` `fx` ; `( ) < >` `4 5 6 ×` `← →` ;
-  `|a| , ≤ ≥` `1 2 3 −` `⌫` ; `ABC 🔊 √ π` `0 . = +` `⏎`. The `fx` key opens a
+  `|a| , ≤ ≥` `1 2 3 −` `⌫` ; `ABC √ π` `0 . = +` `⏎`. The `fx` key opens a
   **Functions popover** (sin, cos, tan, asin, acos, atan, sinh, cosh, tanh,
-  log, ln, exp, cbrt, nthroot, nCr, nPr, !, t, θ, AC), the `ABC` key opens a
-  **letters strip** (a–z slider variables), and 🔊 toggles key sounds. With no
+  log, ln, exp, cbrt, nthroot, nCr, nPr, !, t, θ, AC) and the `ABC` key opens a
+  **letters strip** (a–z slider variables — type any letter into an equation
+  and a **draggable knob slider** appears under that row). With no
   row selected, typing starts a fresh row instead of appending to a completed
   one. The keypad `=` key **inserts** an equals sign so you
   can type `y = x^2` in one row — only `⏎`/Enter commits and opens the next row.
   Note: the `< > ≤ ≥` keys are part of the layout but the engine doesn't
   support inequalities yet — they show a friendly "not supported" hint instead
   of a bare error
+- **Blinking "type here" guide** — empty equation rows pulse with a soft glow,
+  and the first row flashes once when the graph opens, so it's always obvious
+  where to type your equation. (The graph starts on `y = a sin(x)` so the
+  slider knob is visible immediately.)
 - **Keyboard tracing** — with trace mode on, the **← → arrow keys** step the
   trace point along the curve (1/60 of the visible x-range per press) so you
   can explore the curve from the keyboard

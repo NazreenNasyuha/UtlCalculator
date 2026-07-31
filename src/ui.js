@@ -340,15 +340,12 @@
       }
     }
 
-    // Toggle sound on/off and sync every 🔊 button (header toggle + graph
-    // keypad Audio key). Exported so graph.js can wire the keypad key.
+    // Toggle sound on/off and sync the header 🔊 chip. (The graph keypad
+    // used to have its own Audio key — it was removed, so only the header
+    // chip is kept in sync now.)
     function toggleSound() {
       soundOn = !soundOn;
       localStorage.setItem('calc-sound', soundOn ? 'on' : 'off');
-      document.querySelectorAll('[data-action="audio"]').forEach(b => {
-        b.textContent = soundOn ? '🔊' : '🔇';
-        b.classList.toggle('muted', !soundOn);
-      });
       if (soundBtn) soundBtn.textContent = soundOn ? '🔊' : '🔇';
       if (soundOn) playKeySound(false);   // confirmation blip
       return soundOn;
@@ -358,11 +355,6 @@
       soundBtn.textContent = soundOn ? '🔊' : '🔇';
       soundBtn.addEventListener('click', toggleSound);
     }
-    // Keep the graph keypad Audio key's icon in sync on load
-    document.querySelectorAll('[data-action="audio"]').forEach(b => {
-      b.textContent = soundOn ? '🔊' : '🔇';
-      b.classList.toggle('muted', !soundOn);
-    });
 
     // ═══════════════════════════════════════════════════════════════
     // THEME TOGGLE (Dark ↔ Light)
@@ -387,6 +379,6 @@
              precisionBtn, precisionLabel, precisionDropdown, angleModeBtn,
              themeBtn, modeLabel, updateDisplay, handleAction, spawnRipple,
              playKeySound, playChime, animateOdometer, spawnConfetti,
-             setTheme, toggleSound };
+             setTheme };
 
     // ═══════════════════════════════════════════════════════════════

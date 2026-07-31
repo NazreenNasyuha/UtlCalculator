@@ -83,7 +83,7 @@
 
     // ─── IMPORTS (ES module) ───
     import { state, evaluate, graphEvaluate, isFn, tokenize, toRPN, evaluateRPN } from './engine.js';
-    import { playKeySound, toggleSound } from './ui.js';
+    import { playKeySound } from './ui.js';
 
     // Line-color palette for plotted functions (defined in the state object in
     // engine.js; engine.js always loads before this file).
@@ -1194,6 +1194,13 @@
         item.className = 'graph-expr-item';
         item.dataset.i = i;
 
+        // Empty rows get a blinking "type here" guide so it's obvious where
+        // to enter the equation. The class is re-evaluated on every keystroke
+        // and on blur (an empty row = the place you should type next).
+        // (input is always created before syncGuide is ever called — it's only
+        // invoked after the row is fully built and on focus/blur/input events)
+        const syncGuide = () => item.classList.toggle('guide', isEmptyExpression(input.value));
+
         // Color dot — click toggles visibility, right-click cycles color
         const dot = document.createElement('span');
         dot.className = 'color-dot' + (expr.visible ? '' : ' hidden');
@@ -1209,7 +1216,7 @@
         input.value = expr.text || '';
         input.spellcheck = false;
         input.autocomplete = 'off';
-        input.placeholder = 'y = x^2 · (cos t, sin t) · r = 2cos(θ) · x^2+y^2 = 25 · y\' = x^3 · tangent(x^2, 2)';
+        input.placeholder = 'type an equation — e.g. y = x^2';
         input.addEventListener('input', () => {
           expr.text = input.value;
           const err = validateExpression(input.value);
@@ -1220,14 +1227,22 @@
           renderGraph();
           updateValuePreviews();
           renderLegend();               // keep the overlay in sync while typing
+          syncGuide();
         });
-        input.addEventListener('focus', () => { graphState.activeIndex = i; item.classList.add('active'); });
+        input.addEventListener('focus', () => {
+          graphState.activeIndex = i;
+          item.classList.add('active');
+          item.classList.remove('guide');   // you found it — stop blinking
+        });
         input.addEventListener('blur', () => {
           item.classList.remove('active');
           // Remove rows left empty (works for cartesian AND polar rows)
+          let removed = false;
           if (isEmptyExpression(expr.text) && graphState.expressions.length > 1) {
-            removeGraphExpression(i);
+            removeGraphExpression(i);        // re-renders the list — item is now detached
+            removed = true;
           }
+          if (!removed) syncGuide();         // empty survivor row blinks again
         });
         input.addEventListener('keydown', (e) => {
           if (e.key === 'Enter') {
@@ -1268,6 +1283,7 @@
         item.appendChild(input);
         item.appendChild(value);
         item.appendChild(slidersWrap);
+        syncGuide();
         // Integral rows with a letter bound get a ▶ button that animates the
         // shaded area (numeric-bound integrals have nothing to sweep)
         const iParsed = parseGraphExpression(expr.text);
@@ -1302,7 +1318,14 @@
           renderGraphExprList();
           renderLegend();
         } else {
-          addGraphExpression('y = sin(x)', { focus: false });
+          // Start with a curve that has a letter parameter (a), so the row
+          // immediately shows a draggable KNOB — new users instantly see the
+          // "slide the equation" affordance the app is built around.
+          addGraphExpression('y = a sin(x)', { focus: false });
+          // One-time attention pulse on the first row — a friendly "look here"
+          // so new users instantly spot where the equation is edited.
+          const firstRow = graphExprList.children[0];
+          if (firstRow) firstRow.classList.add('attention');
         }
       }
       renderGraph();
@@ -1611,7 +1634,6 @@
         if (pop && letters && letters.classList.contains('open')) pop.classList.remove('open');
         return;
       }
-      if (action === 'audio') { toggleSound(); return; }
 
       // What each key inserts into the expression row
       const insertMap = {
