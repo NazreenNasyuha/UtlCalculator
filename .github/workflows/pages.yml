@@ -1,0 +1,77 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# Deploy to GitHub Pages — publishes the app live so anyone can use it with a
+# link (no download, no install). Runs automatically on every push to main.
+#
+# How it works: this workflow copies the built single-file HTML (and the src/
+# folder as a fallback) into a static site, uploads it as a Pages artifact and
+# deploys it. The site lives at:
+#     https://<your-username>.github.io/UtlCalculator/
+#
+# One-time setup in the repo (Settings → Pages → Build and deployment):
+#     Source: "GitHub Actions"   ← must be selected for this workflow to deploy
+# ─────────────────────────────────────────────────────────────────────────────
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:      # lets you re-deploy manually from the Actions tab
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# One deploy at a time; cancel stale runs if a new push lands
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # Rebuild the single-file bundle so Pages always serves the latest code
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Build single-file bundle
+        run: node build-single-file.js
+
+      # The committed FreeCalc-single-file.html is the "download & open"
+      # artifact people grab from the repo. If src/ changed without a rebuild,
+      # fail here so the committed bundle can never drift out of date.
+      - name: Verify committed bundle is fresh
+        run: git diff --exit-code -- FreeCalc-single-file.html
+
+      # Assemble the site root: the standalone app + the src/ source files
+      - name: Prepare site
+        run: |
+          mkdir -p _site
+          cp FreeCalc-single-file.html _site/index.html
+          cp -r src _site/src
+          cp README.md _site/README.md
+
+      - name: Configure Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

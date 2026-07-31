@@ -1,0 +1,11 @@
+# Normalize line endings so the CI "Verify committed bundle is fresh" check
+# behaves identically on every machine (Windows vs Linux runners).
+# * text=auto  → git stores text files with LF in the repo
+* text=auto
+
+# The generated bundle must always be LF — a stale CRLF would trip the
+# workflow's `git diff --exit-code` freshness check.
+FreeCalc-single-file.html text eol=lf
+
+# Windows batch files must stay CRLF or cmd.exe misbehaves
+*.bat text eol=crlf
