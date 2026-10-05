@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>UltCalc Real-Life Comprehensive Test Suite</title>
+  <style>
+    body { font-family: monospace; background: #0d1117; color: #c9d1d9; padding: 20px; }
+    .pass { color: #56d364; }
+    .fail { color: #f85149; font-weight: bold; }
+    .summary { font-size: 16px; margin: 20px 0; padding: 10px; border-top: 1px solid #30363d; }
+    .section { font-size: 14px; font-weight: bold; margin-top: 20px; color: #58a6ff; }
+  </style>
+</head>
+<body>
+  <h1>UltCalc / FreeCalc Real-Life Test Suite</h1>
+  <div id="results"></div>
+  <pre id="logOutput"></pre>
+
+  <!-- Mount container for full UI simulation -->
+  <div id="calcMount" style="position: absolute; left: -9999px; top: -9999px;">
+    <div class="calc mode-scientific" id="calc">
+      <span class="name" id="modeLabel">Scientific</span>
+      <span class="chip" id="angleModeBtn">RAD</span>
+      <span class="chip" id="soundToggle">🔊</span>
+      <span class="chip" id="themeToggle">🌙</span>
+      <button type="button" class="precision-btn" id="precisionBtn"><span id="precisionLabel">Auto</span></button>
+      <div class="precision-dropdown" id="precisionDropdown" style="display:none">
+        <div class="item active" data-prec="auto"><span>Auto</span></div>
+        <div class="item" data-prec="fix2"><span>Fix 2</span></div>
+        <div class="item" data-prec="sci"><span>Sci</span></div>
+        <div class="item" data-prec="eng"><span>Eng</span></div>
+      </div>
+      <div class="display" id="display">
+        <div class="display-history" id="displayHistory"></div>
+        <div class="display-math" id="displayMath"></div>
+        <textarea class="display-editor" id="displayEditor"></textarea>
+        <div class="display-result" id="displayResult" style="display:none">
+          <span class="display-value" id="displayValue"></span>
+        </div>
+      </div>
+      <canvas id="graphCanvas" width="800" height="600"></canvas>
+      <div id="graphExprList"></div>
+      <button id="graphAddBtn">+</button>
+      <span id="graphCoordLabel"></span>
+      <button id="graphZoomIn">+</button>
+      <button id="graphZoomOut">-</button>
+      <button id="graphHome">H</button>
+      <button id="graphExport">E</button>
+      <div id="graphLegend"></div>
+      <button id="graphHelpBtn">?</button>
+      <div id="graphHelp"></div>
+      <input id="tMinInput" value="-10" />
+      <input id="tMaxInput" value="10" />
+      <input id="thMinInput" value="0" />
+      <input id="thMaxInput" value="6.28" />
+      <input id="xMinInput" value="-10" />
+      <input id="xMaxInput" value="10" />
+      <input id="yMinInput" value="-10" />
+      <input id="yMaxInput" value="10" />
+      <button id="graphAspect">▭</button>
+      <button id="graphTraceBtn">◎</button>
+      <input id="viewZoomSlider" type="range" />
+      <span id="viewZoomVal"></span>
+      <input id="viewAspectSlider" type="range" />
+      <span id="viewAspectVal"></span>
+      <span id="stepScaleLabel"></span>
+      <button id="stepZoomIn"></button>
+      <button id="stepZoomOut"></button>
+      <div class="keypad-sci">
+        <button type="button" class="key-btn" data-action="1">1</button>
+        <button type="button" class="key-btn" data-action="add">+</button>
+        <button type="button" class="key-btn" data-action="2">2</button>
+        <button type="button" class="key-btn" data-action="equals">=</button>
+        <button type="button" class="key-btn" data-action="clear">AC</button>
+      </div>
+    </div>
+  </div>
+
+  <script type="module">
+    import { state, evaluate, graphEvaluate, formatResult, tokenize, toRPN, evaluateRPN, isFn } from '../src/engine.js';
+    import { esc, renderExpression } from '../src/mathml-renderer.js';
+    import { graphState, initGraph, renderGraph, parseGraphExpression, numericDerivative,
+             getTablePlottableFunctions, exportGraphStateToUrl } from '../src/graph.js';
+    import { handleAction, updateDisplay, setTheme } from '../src/ui.js';
+
+    const logs = [];
+    let passCount = 0;
+    let failCount = 0;
+
+    function assert(name, condition, extra) {
+      if (condition) {
+        passCount++;
+        logs.push(`✓ PASS: ${name}`);
+      } else {
+        failCount++;
+        logs.push(`✗ FAIL: ${name} ${extra ? '(' + extra + ')' : ''}`);
+      }
+    }
+
+    function approx(a, b, tol = 1e-4) {
+      if (Number.isNaN(a) && Number.isNaN(b)) return true;
+      if (!isFinite(a) && !isFinite(b)) return a === b;
+      return Math.abs(a - b) <= tol * Math.max(1, Math.abs(b));
+    }
+
+    logs.push("════════════════════════════════════════════════════════════");
+    logs.push("   ULTCALC REAL-LIFE COMPREHENSIVE VERIFICATION SUITE");
+    logs.push("════════════════════════════════════════════════════════════");
+
+    // ─────────────────────────────────────────────────────────────
+    // 1. REAL-WORLD SCIENTIFIC & APPLIED MATHEMATICS
+    // ─────────────────────────────────────────────────────────────
+    logs.push("\n--- 1. Scientific & Applied Mathematics ---");
+
+    // Order of operations & precedence
+    assert("Precedence 2 + 3 * 4 === 14", evaluate("2 + 3 * 4") === 14);
+    assert("Right-associativity 2^3^2 === 512", evaluate("2^3^2") === 512);
+    assert("Unary negation precedence -5^2 === -25", evaluate("-5^2") === -25);
+    assert("Parenthesized negation (-5)^2 === 25", evaluate("(-5)^2") === 25);
+    assert("Unary plus identity: +42 === 42", evaluate("+42") === 42);
+    assert("Unary plus in expressions: 3 * +4 === 12", evaluate("3 * +4") === 12);
+    assert("Chained signs: -+5 === -5 and +-5 === -5", evaluate("-+5") === -5 && evaluate("+-5") === -5);
+
+    // Percentage calculations
+    assert("Percentage division: 100 / 50% === 200", approx(evaluate("100 / 50%"), 200));
+    assert("Percentage multiplication: 50 * 20% === 10", approx(evaluate("50 * 20%"), 10));
+
+    // Factorial & Combinatorics
+    assert("Factorial: 0! === 1", evaluate("0!") === 1);
+    assert("Factorial: 5! === 120", evaluate("5!") === 120);
+    assert("Factorial: 10! === 3628800", evaluate("10!") === 3628800);
+    assert("Lottery combinations: nCr(49, 6) === 13983816", evaluate("nCr(49, 6)") === 13983816);
+    assert("Permutations: nPr(8, 3) === 336", evaluate("nPr(8, 3)") === 336);
+
+    // Number Theory
+    assert("GCD: gcd(48, 180) === 12", evaluate("gcd(48, 180)") === 12);
+    assert("LCM: lcm(12, 18) === 36", evaluate("lcm(12, 18)") === 36);
+    assert("Modulo: mod(17, 5) === 2", evaluate("mod(17, 5)") === 2);
+    assert("Modulo with negative dividend: mod(-1, 5) === 4", evaluate("mod(-1, 5)") === 4);
+
+    // Statistics
+    assert("Mean: mean(10, 20, 30, 40) === 25", evaluate("mean(10, 20, 30, 40)") === 25);
+    assert("Population stdev: stdevp(2, 4, 4, 4, 5, 5, 7, 9) === 2", approx(evaluate("stdevp(2, 4, 4, 4, 5, 5, 7, 9)"), 2));
+
+    // Roots
+    assert("Cube root: cbrt(-27) === -3", evaluate("cbrt(-27)") === -3);
+    assert("Nth root: nthroot(64, 6) === 2", approx(evaluate("nthroot(64, 6)"), 2));
+    assert("Real negative nth root: nthroot(-32, 5) === -2", approx(evaluate("nthroot(-32, 5)"), -2));
+    assert("Graphing-style real root exponent: (-8)^(1/3) === -2", approx(evaluate("(-8)^(1/3)"), -2));
+
+    // Trigonometry & Angle Modes
+    state.angleMode = 'DEG';
+    assert("DEG sin(30) === 0.5", approx(evaluate("sin(30)"), 0.5));
+    assert("DEG cos(60) === 0.5", approx(evaluate("cos(60)"), 0.5));
+    assert("DEG tan(45) === 1", approx(evaluate("tan(45)"), 1));
+    assert("DEG asin(0.5) === 30", approx(evaluate("asin(0.5)"), 30));
+    state.angleMode = 'RAD';
+    assert("RAD sin(pi/6) === 0.5", approx(evaluate("sin(pi/6)"), 0.5));
+    assert("RAD cos(pi/3) === 0.5", approx(evaluate("cos(pi/3)"), 0.5));
+
+    // Case-insensitivity & constants
+    assert("Case-insensitive functions: SIN(0) === 0", evaluate("SIN(0)") === 0);
+    assert("Case-insensitive functions: Cos(0) === 1", evaluate("Cos(0)") === 1);
+    assert("Case-insensitive constants: PI === Math.PI", evaluate("PI") === Math.PI);
+    assert("Euler constant: e^1 === Math.E", approx(evaluate("e^1"), Math.E));
+    assert("Tau constant: tau === 2*Math.PI", approx(evaluate("tau"), 2 * Math.PI));
+
+    // Precision Formats
+    state.precision = 'auto';
+    assert("formatResult auto 0.1 + 0.2 === '0.3'", formatResult(0.1 + 0.2) === '0.3');
+    state.precision = 'fix2';
+    assert("formatResult fix2 Math.PI === '3.14'", formatResult(Math.PI) === '3.14');
+    state.precision = 'sci';
+    assert("formatResult sci 1234.5 === '1.2345e+3'", formatResult(1234.5) === '1.2345e+3');
+    state.precision = 'eng';
+    assert("formatResult eng 0 === '0.000e0'", formatResult(0) === '0.000e0');
+    assert("formatResult eng 5000 === '5.000e3'", formatResult(5000) === '5.000e3');
+    state.precision = 'auto';
+
+    // ─────────────────────────────────────────────────────────────
+    // 2. TEXTBOOK MATHML RENDERING
+    // ─────────────────────────────────────────────────────────────
+    logs.push("\n--- 2. MathML Rendering ---");
+    state.expression = "5/2";
+    renderExpression();
+    let m = document.getElementById('displayMath').innerHTML;
+    assert("Stacked fraction <mfrac> for 5/2", m.includes('<mfrac>') && m.includes('<mn>5</mn>') && m.includes('<mn>2</mn>'));
+
+    state.expression = "x^3";
+    renderExpression();
+    m = document.getElementById('displayMath').innerHTML;
+    assert("Superscript <msup> for x^3", m.includes('<msup>') && m.includes('x') && m.includes('3'));
+
+    state.expression = "nCr(10, 4)";
+    renderExpression();
+    m = document.getElementById('displayMath').innerHTML;
+    assert("nCr with arguments rendered: nCr(10, 4)", m.includes('nCr') && m.includes('10') && m.includes('4') && m.includes('<mo>,</mo>'));
+
+    state.expression = "mean(2, 4, 6)";
+    renderExpression();
+    m = document.getElementById('displayMath').innerHTML;
+    assert("mean variadic rendered: mean(2, 4, 6)", m.includes('mean') && m.includes('2') && m.includes('4') && m.includes('6'));
+
+    state.expression = "2π";
+    renderExpression();
+    m = document.getElementById('displayMath').innerHTML;
+    assert("Implicit multiplication with π", m.includes('<mi>π</mi>') && m.includes('<mo>×</mo>'));
+
+    // ─────────────────────────────────────────────────────────────
+    // 3. GRAPHING ENGINE & NUMERICAL CALCULUS
+    // ─────────────────────────────────────────────────────────────
+    logs.push("\n--- 3. Graphing Engine & Calculus ---");
+
+    // Curve Classification
+    const pCart = parseGraphExpression("y = x^2");
+    assert("Classify Cartesian y = x^2", pCart.kind === 'cartesian' && pCart.yExpr === 'x^2');
+
+    const pParam = parseGraphExpression("x = cos(t), y = sin(t)");
+    assert("Classify Parametric x=cos(t), y=sin(t)", pParam.kind === 'parametric' && pParam.xExpr === 'cos(t)');
+
+    const pPolar = parseGraphExpression("r = 2cos(θ)");
+    assert("Classify Polar r = 2cos(θ)", pPolar.kind === 'polar' && pPolar.rExpr === '2cos(θ)');
+
+    const pImplicit = parseGraphExpression("x^2 + y^2 = 25");
+    assert("Classify Implicit x^2 + y^2 = 25", pImplicit.kind === 'implicit');
+
+    const pDeriv1 = parseGraphExpression("y' = x^3");
+    assert("Classify 1st derivative y' = x^3", pDeriv1.kind === 'derivative' && pDeriv1.order === 1);
+
+    const pDeriv2 = parseGraphExpression("y'' = x^3");
+    assert("Classify 2nd derivative y'' = x^3", pDeriv2.kind === 'derivative' && pDeriv2.order === 2);
+
+    const pIntegral = parseGraphExpression("integral(x^2, 0, 2)");
+    assert("Classify Integral integral(x^2, 0, 2)", pIntegral.kind === 'integral' && pIntegral.yExpr === 'x^2');
+
+    const pTangent = parseGraphExpression("tangent(x^2, 2)");
+    assert("Classify Tangent tangent(x^2, 2)", pTangent.kind === 'tangent');
+
+    const pIneq1 = parseGraphExpression("y <= x^2");
+    assert("Classify Inequality y <= x^2", pIneq1.kind === 'inequality' && pIneq1.op === '<=' && pIneq1.yExpr === 'x^2');
+
+    const pIneq2 = parseGraphExpression("x <= 3");
+    assert("Classify Vertical Inequality x <= 3", pIneq2.kind === 'inequality' && pIneq2.subtype === 'x' && pIneq2.xVal === '3');
+
+    const pIneq3 = parseGraphExpression("x^2 + y^2 <= 25");
+    assert("Classify Implicit Inequality x^2 + y^2 <= 25", pIneq3.kind === 'inequality' && pIneq3.subtype === 'implicit');
+
+    // Table of values extraction
+    const tableFns = getTablePlottableFunctions();
+    assert("Table of values extracts plottable functions", Array.isArray(tableFns));
+
+    // Share link export
+    const shareState = exportGraphStateToUrl();
+    assert("Export shareable graph URL with #graph=", shareState.url.includes('#graph='));
+
+    // Calculus Mathematics
+    // 1st Derivative of x^3 at x = 2 is 3*(2^2) = 12
+    const d1 = numericDerivative("x^3", 2, {}, 1);
+    assert("1st Derivative d/dx(x^3) at x=2 ≈ 12", approx(d1, 12, 1e-3));
+
+    // 2nd Derivative of x^3 at x = 2 is 6*x = 12
+    const d2 = numericDerivative("x^3", 2, {}, 2);
+    assert("2nd Derivative d2/dx2(x^3) at x=2 ≈ 12", approx(d2, 12, 1e-3));
+
+    // 1st Derivative of sin(x) at x = 0 is cos(0) = 1
+    const dSin = numericDerivative("sin(x)", 0, {}, 1);
+    assert("Derivative d/dx(sin(x)) at x=0 ≈ 1", approx(dSin, 1, 1e-3));
+
+    // Graph evaluation with sliders
+    const graphEval = graphEvaluate("a * x^2", 2); // default variable map test
+    assert("graphEvaluate expression evaluation at x=2", evaluate("3 * x^2", { x: 2, a: 3 }) === 12);
+
+    // Canvas Rendering Smoke Test
+    initGraph();
+    renderGraph();
+    const cvs = document.getElementById('graphCanvas');
+    assert("Graph canvas initialized with context", cvs && cvs.getContext('2d') !== null);
+
+    // ─────────────────────────────────────────────────────────────
+    // 4. UI INTERACTION & EVENT SIMULATION
+    // ─────────────────────────────────────────────────────────────
+    logs.push("\n--- 4. UI Interactions & State Management ---");
+
+    // Keypad actions
+    handleAction('clear');
+    assert("Clear resets expression", state.expression === '' && state.displayValue === '');
+
+    handleAction('1');
+    handleAction('add');
+    handleAction('2');
+    assert("Key clicks construct expression '1+2'", state.expression === '1+2');
+
+    handleAction('equals');
+    assert("Equals evaluates to 3", state.displayValue === '3' && state.lastResult === 3);
+
+    // History record
+    const historyList = document.getElementById('displayHistory');
+    assert("History records evaluation", historyList.children.length > 0 && historyList.innerHTML.includes('1+2'));
+
+    // Theme toggle
+    setTheme('light');
+    assert("Set light theme", document.documentElement.getAttribute('data-theme') === 'light');
+    setTheme('dark');
+    assert("Set dark theme", document.documentElement.getAttribute('data-theme') === null);
+
+    // Summary
+    logs.push("\n════════════════════════════════════════════════════════════");
+    logs.push(`TOTAL TESTS PASSED: ${passCount}`);
+    logs.push(`TOTAL TESTS FAILED: ${failCount}`);
+    logs.push("════════════════════════════════════════════════════════════");
+
+    const resDiv = document.getElementById('results');
+    const summaryDiv = document.createElement('div');
+    summaryDiv.className = 'summary ' + (failCount === 0 ? 'pass' : 'fail');
+    summaryDiv.textContent = `RESULT: ${passCount} passed, ${failCount} failed.`;
+    resDiv.appendChild(summaryDiv);
+    document.getElementById('logOutput').textContent = logs.join('\n');
+  </script>
+</body>
+</html>

@@ -61,20 +61,67 @@
     function parsePow(t,p){let l=parseUn(t,p);if(!l)return null;let{m,pos:n}=l;while(n<t.length&&(t[n].type==='percent'||t[n].type==='postfix')){m=t[n].type==='percent'?`<mrow>${m}<mo>%</mo></mrow>`:`<mrow>${m}<mo>!</mo></mrow>`;n++;}if(n<t.length&&t[n].value==='^'){n++;const r=parsePow(t,n);if(r){m=`<msup>${m}${r.m}</msup>`;n=r.pos;}else{m=phOk?`<msup>${m}<mtext class=\"placeholder\">&#x25FB;</mtext></msup>`:`<mrow>${m}<mo>^</mo></mrow>`;}}return{m,pos:n};}
     function parseUn(t,p){
       if(p>=t.length)return null;
-      const F={'sin':'sin','cos':'cos','tan':'tan','asin':'sin⁻¹','acos':'cos⁻¹','atan':'tan⁻¹','sinh':'sinh','cosh':'cosh','tanh':'tanh','asinh':'sinh⁻¹','acosh':'cosh⁻¹','atanh':'tanh⁻¹','csc':'csc','sec':'sec','cot':'cot','log':'log','ln':'ln','sqrt':'√','cbrt':'∛','abs':'abs','exp':'exp','ceil':'ceil','floor':'floor','round':'round'};
-      if(t[p].type==='name'&&F[t[p].value]){
-        const fn=t[p].value,d=F[fn];p++;
+      const F={'sin':'sin','cos':'cos','tan':'tan','asin':'sin⁻¹','acos':'cos⁻¹','atan':'tan⁻¹',
+               'sinh':'sinh','cosh':'cosh','tanh':'tanh','asinh':'sinh⁻¹','acosh':'cosh⁻¹','atanh':'tanh⁻¹',
+               'csc':'csc','sec':'sec','cot':'cot','log':'log','ln':'ln','sqrt':'√','cbrt':'∛',
+               'abs':'abs','exp':'exp','fact':'fact','ceil':'ceil','floor':'floor','round':'round',
+               'gcd':'gcd','lcm':'lcm','mod':'mod','ncr':'nCr','npr':'nPr','nthroot':'nthroot',
+               'mean':'mean','stdev':'stdev','stdevp':'stdevp'};
+      const fnKey = t[p].type==='name' ? t[p].value.toLowerCase() : null;
+      if(fnKey && F[fnKey]){
+        const d=F[fnKey]; p++;
         if(p<t.length&&t[p].value==='('){
-          p++;const inner=parseAdd(t,p);
-          if(inner){p=inner.pos;if(p<t.length&&t[p].value===')'){p++;return{m:`<mrow><mi>${d}</mi><mo>(</mo>${inner.m}<mo>)</mo></mrow>`,pos:p};}return{m:`<mrow><mi>${d}</mi><mo>(</mo>${inner.m}</mrow>`,pos:p};}
-          if(p<t.length&&t[p].value===')'){p++;return{m:`<mrow><mi>${d}</mi><mo>(</mo><mtext class=\"placeholder\">&#x25FB;</mtext><mo>)</mo></mrow>`,pos:p};}
-          return{m:`<mrow><mi>${d}</mi><mo>(</mo><mtext class=\"placeholder\">&#x25FB;</mtext></mrow>`,pos:p};
+          p++;
+          const args = [];
+          while(p<t.length&&t[p].value!==')'){
+            const arg = parseAdd(t, p);
+            if(!arg){
+              if(phOk) args.push('<mtext class="placeholder">&#x25FB;</mtext>');
+              break;
+            }
+            args.push(arg.m);
+            p = arg.pos;
+            if(p<t.length&&t[p].value===','){
+              p++;
+            } else {
+              break;
+            }
+          }
+          if(args.length===0&&phOk) args.push('<mtext class="placeholder">&#x25FB;</mtext>');
+          if(p<t.length&&t[p].value===')'){
+            p++;
+            return {m:`<mrow><mi>${d}</mi><mo>(</mo>${args.join('<mo>,</mo>')}<mo>)</mo></mrow>`,pos:p};
+          }
+          return {m:`<mrow><mi>${d}</mi><mo>(</mo>${args.join('<mo>,</mo>')}</mrow>`,pos:p};
         }
-        return{m:`<mi>${d}</mi>`,pos:p};
+        return {m:`<mi>${d}</mi>`,pos:p};
       }
       if(t[p].type==='name'){const v=t[p].value;if(v==='π')return{m:'<mi>π</mi>',pos:p+1};if(v==='τ')return{m:'<mi>τ</mi>',pos:p+1};if(v==='e')return{m:'<mi>e</mi>',pos:p+1};return{m:v==='ans'?'<mi>ans</mi>':`<mi>${esc(v)}</mi>`,pos:p+1};}
       if(t[p].type==='num')return{m:`<mn>${esc(t[p].value)}</mn>`,pos:p+1};
-      if(t[p].value==='('){p++;const inner=parseAdd(t,p);if(inner){p=inner.pos;if(p<t.length&&t[p].value===')'){p++;return{m:`<mrow><mo>(</mo>${inner.m}<mo>)</mo></mrow>`,pos:p};}return{m:`<mo>(</mo>${inner.m}`,pos:p};}if(p<t.length&&t[p].value===')'){p++;return{m:`<mrow><mo>(</mo><mtext class=\"placeholder\">&#x25FB;</mtext><mo>)</mo></mrow>`,pos:p};}return{m:`<mrow><mo>(</mo><mtext class=\"placeholder\">&#x25FB;</mtext></mrow>`,pos:p};}
+      if(t[p].value==='('){
+        p++;
+        const args = [];
+        while(p<t.length&&t[p].value!==')'){
+          const arg = parseAdd(t, p);
+          if(!arg){
+            if(phOk) args.push('<mtext class="placeholder">&#x25FB;</mtext>');
+            break;
+          }
+          args.push(arg.m);
+          p = arg.pos;
+          if(p<t.length&&t[p].value===','){
+            p++;
+          } else {
+            break;
+          }
+        }
+        if(args.length===0&&phOk) args.push('<mtext class="placeholder">&#x25FB;</mtext>');
+        if(p<t.length&&t[p].value===')'){
+          p++;
+          return {m:`<mrow><mo>(</mo>${args.join('<mo>,</mo>')}<mo>)</mo></mrow>`,pos:p};
+        }
+        return {m:`<mrow><mo>(</mo>${args.join('<mo>,</mo>')}</mrow>`,pos:p};
+      }
       if(t[p].value==='-'){p++;const inner=parseUn(t,p);if(inner)return{m:`<mrow><mo>−</mo>${inner.m}</mrow>`,pos:inner.pos};return{m:'<mo>−</mo>',pos:p};}
       return null;
     }

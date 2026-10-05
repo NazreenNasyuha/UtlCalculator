@@ -70,6 +70,10 @@
 
     // All buttons: click triggers handleAction with data-action value
     document.querySelectorAll('.key-btn, .keypad-tab, .mode-tab').forEach(btn => {
+      btn.addEventListener('mousedown', (e) => {
+        // Prevent keypad buttons from stealing focus and blurring the expression input
+        if (btn.classList.contains('key-btn')) e.preventDefault();
+      });
       btn.addEventListener('click', (e) => {
         // Resolve the action from data-action (keys), data-mode (mode tabs),
         // or data-panel (keypad panel tabs: Main/ABC/Funct)
@@ -218,9 +222,9 @@
     // Start in scientific mode
     switchMode('scientific');
 
-    // Deep-link: open calculator.html#graph to boot straight into Graphing mode
-    // (also handy for browser-automation tests of the graph UI)
-    if (location.hash === '#graph') switchMode('graphing');
+    // Deep-link: open calculator.html#graph to boot straight into Graphing mode,
+    // or #graph=... to restore a shared graph state
+    if (location.hash === '#graph' || location.hash.startsWith('#graph=')) switchMode('graphing');
 
     // Window resize: re-render graph if visible
     window.addEventListener('resize', () => {

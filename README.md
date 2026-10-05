@@ -103,6 +103,17 @@ python -m http.server 8000    # then open http://localhost:8000/calculator.html
 - **Session persistence** — expressions, slider values, viewport, t/θ ranges
   and the aspect lock are saved to `localStorage` (debounced) and restored on
   reload, so your graph is exactly where you left it
+- **Inequality Shading** — plot inequalities like `y <= x^2`, `y < 2x + 1`,
+  `y >= sin(x)`, `x <= 3`, or `x^2 + y^2 <= 25`. Non-strict inequalities (`<=`, `>=`, `≤`, `≥`)
+  render with solid boundary curves; strict inequalities (`<`, `>`) render with
+  dashed boundary lines. Regions are smoothly shaded with a translucent tint.
+- **Table of Values (`⊞`)** — click the `⊞` button in the canvas controls to view
+  an interactive coordinate table for all visible plotted functions. Customize
+  start $x$, end $x$, and step $\Delta x$, and instantly **Copy** to clipboard
+  or download as **CSV** for Excel/Google Sheets.
+- **Shareable Graph Links (`🔗`)** — click the `🔗` button to encode all active
+  equations, colors, view bounds, and sliders into a shareable URL hash (`#graph=...`).
+  Opening the link instantly restores the exact graph state.
 - **Three-group graphing keypad** — the graphing keypad is laid out like a
   professional graphing calculator's (4 rows × 3 groups): `x y a² a^b`
   `7 8 9 ÷` `fx` ; `( ) < >` `4 5 6 ×` `← →` ;
@@ -114,9 +125,6 @@ python -m http.server 8000    # then open http://localhost:8000/calculator.html
   row selected, typing starts a fresh row instead of appending to a completed
   one. The keypad `=` key **inserts** an equals sign so you
   can type `y = x^2` in one row — only `⏎`/Enter commits and opens the next row.
-  Note: the `< > ≤ ≥` keys are part of the layout but the engine doesn't
-  support inequalities yet — they show a friendly "not supported" hint instead
-  of a bare error
 - **Blinking "type here" guide** — empty equation rows pulse with a soft glow,
   and the first row flashes once when the graph opens, so it's always obvious
   where to type your equation. (The graph starts on `y = a sin(x)` so the
@@ -201,7 +209,8 @@ Calculator Project/
 │   ├── test_implicit.js             # implicit-curve detection + equation math
 │   ├── test_ui_structure.js         # HTML markup structure check
 │   ├── test_single_file.js          # executes the bundled single-file in Node
-│   └── verify_mathml_render.js      # MathML render verification
+│   ├── verify_mathml_render.js      # MathML render verification
+│   └── test_reallife_suite.html     # Real-life end-to-end browser test suite (64 checks)
 ├── build-single-file.js      # bundles the app into ONE standalone HTML file
 ├── FreeCalc-single-file.html # 📦 the build output — download & double-click
 ├── .github/workflows/pages.yml  # auto-deploys to GitHub Pages on push

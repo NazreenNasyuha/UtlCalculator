@@ -150,6 +150,8 @@
               <button id="graphHome" title="Reset view">⌂</button>
               <button id="graphAspect" title="Square grid: lock 1:1 aspect ratio">▭</button>
               <button id="graphTraceBtn" title="Curve tracing: hover to walk along the curve (x, f(x), f'(x))">◎</button>
+              <button id="graphTableBtn" title="Table of values (x, y coordinates)">⊞</button>
+              <button id="graphShareBtn" title="Share graph: copy link">🔗</button>
               <button id="graphExport" title="Export PNG">⬇</button>
               <button id="graphHelpBtn" title="Keyboard shortcuts">?</button>
             </div>
@@ -164,14 +166,47 @@
                 <li><kbd>Esc</kbd> close the row</li>
                 <li><kbd>x</kbd> <kbd>t</kbd> <kbd>θ</kbd> insert variable</li>
                 <li><kbd>a</kbd>–<kbd>z</kbd> letter slider variables</li>
+                <li><kbd>y &lt;= x^2</kbd> <kbd>y &gt; 2x</kbd> shaded inequalities (&lt;, &gt;, &le;, &ge;)</li>
                 <li><kbd>y' = x^3</kbd> plot the derivative</li>
                 <li><kbd>y'' = 6x</kbd> <kbd>d2/dx2 x^4</kbd> higher derivatives</li>
                 <li><kbd>integral(x^2, 0, 2)</kbd> shaded area + value</li>
                 <li><kbd>tangent(x^2, 2)</kbd> tangent line (or <kbd>a</kbd> for a slider point)</li>
-                <li><kbd>◎</kbd> curve tracing: walk along the curve with the mouse</li>
+                <li><kbd>◎</kbd> curve tracing: walk along curve with mouse</li>
+                <li><kbd>⊞</kbd> table of values (x, y coordinates) with CSV/copy</li>
+                <li><kbd>🔗</kbd> shareable graph link</li>
                 <li>Right-click dot: cycle color</li>
               </ul>
             </div>
+            <!-- Table of values modal -->
+            <div class="graph-modal-backdrop" id="graphTableModal" style="display: none;">
+              <div class="graph-modal-dialog">
+                <div class="graph-modal-header">
+                  <span>Table of Values</span>
+                  <button type="button" class="graph-modal-close" id="tableModalClose" title="Close">×</button>
+                </div>
+                <div class="graph-modal-toolbar">
+                  <div class="table-param-group">
+                    <label for="tableXStart">Start <i>x</i>:</label>
+                    <input type="number" id="tableXStart" value="-5" step="1" />
+                  </div>
+                  <div class="table-param-group">
+                    <label for="tableXEnd">End <i>x</i>:</label>
+                    <input type="number" id="tableXEnd" value="5" step="1" />
+                  </div>
+                  <div class="table-param-group">
+                    <label for="tableXStep">Step Δ<i>x</i>:</label>
+                    <input type="number" id="tableXStep" value="1" min="0.001" step="0.5" />
+                  </div>
+                  <div class="table-btn-group">
+                    <button type="button" class="table-action-btn" id="tableCopyBtn" title="Copy table to clipboard">📋 Copy</button>
+                    <button type="button" class="table-action-btn" id="tableCsvBtn" title="Download CSV">⬇ CSV</button>
+                  </div>
+                </div>
+                <div class="graph-modal-body" id="tableContent"></div>
+              </div>
+            </div>
+            <!-- Notification toast overlay for graph actions -->
+            <div class="graph-toast" id="graphToast" style="display: none;"></div>
             <!-- Coordinate display at mouse cursor position -->
             <div class="graph-coord-label" id="graphCoordLabel">(0, 0)</div>
             <!-- Step/scale controls for zooming the grid -->

@@ -915,6 +915,87 @@
       padding: 0 4px; margin-right: 3px;
     }
 
+    /* ── Table of Values modal & Toast overlay ── */
+    .graph-modal-backdrop {
+      position: absolute; inset: 0;
+      background: rgba(0, 0, 0, 0.65);
+      backdrop-filter: blur(3px);
+      z-index: 25;
+      display: flex; align-items: center; justify-content: center;
+      padding: 10px;
+    }
+    .graph-modal-dialog {
+      background: var(--dropdown-bg, #161b22);
+      border: 1px solid var(--border, #30363d);
+      border-radius: 10px;
+      width: 100%; max-width: 440px; max-height: 85%;
+      display: flex; flex-direction: column;
+      box-shadow: 0 12px 36px rgba(0,0,0,0.6);
+      overflow: hidden;
+    }
+    .graph-modal-header {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 8px 12px; border-bottom: 1px solid var(--border);
+      font-size: 0.8rem; font-weight: 600; color: var(--text-primary);
+    }
+    .graph-modal-close {
+      background: transparent; border: none; font-size: 1.15rem;
+      cursor: pointer; color: var(--text-muted); line-height: 1;
+      padding: 2px 6px; border-radius: 4px;
+    }
+    .graph-modal-close:hover { color: var(--text-primary); }
+    .graph-modal-toolbar {
+      display: flex; flex-wrap: wrap; gap: 8px; align-items: center;
+      padding: 6px 12px; border-bottom: 1px solid var(--border);
+      background: var(--canvas-bg, #0d0e12); font-size: 0.7rem;
+    }
+    .table-param-group {
+      display: flex; align-items: center; gap: 3px; color: var(--text-secondary);
+    }
+    .table-param-group input {
+      width: 48px; padding: 2px 4px; border: 1px solid var(--border);
+      border-radius: 4px; background: var(--input-bg, #0d1117);
+      color: var(--text-primary); font-family: monospace; font-size: 0.7rem;
+      text-align: center;
+    }
+    .table-btn-group {
+      margin-left: auto; display: flex; gap: 4px;
+    }
+    .table-action-btn {
+      padding: 3px 7px; border: 1px solid var(--border); border-radius: 4px;
+      background: var(--btn-num-bg, #21262d); color: var(--text-primary);
+      cursor: pointer; font-size: 0.68rem; font-family: inherit;
+    }
+    .table-action-btn:hover { background: var(--btn-num-hover, #30363d); }
+    .graph-modal-body {
+      padding: 8px 12px; overflow-y: auto; max-height: 220px;
+      font-size: 0.7rem; font-family: 'Consolas', monospace;
+    }
+    .graph-table {
+      width: 100%; border-collapse: collapse; text-align: right;
+    }
+    .graph-table th, .graph-table td {
+      padding: 4px 8px; border-bottom: 1px solid var(--border);
+    }
+    .graph-table th {
+      background: var(--surface-2, rgba(255,255,255,0.04));
+      position: sticky; top: 0; color: var(--text-primary); font-weight: 600;
+    }
+    .graph-table td:first-child, .graph-table th:first-child {
+      text-align: left; font-weight: 600; border-right: 1px solid var(--border);
+    }
+    .table-dot {
+      display: inline-block; width: 7px; height: 7px; border-radius: 50%;
+      margin-right: 4px; vertical-align: middle;
+    }
+    .graph-toast {
+      position: absolute; bottom: 12px; left: 50%; transform: translateX(-50%);
+      background: var(--dropdown-bg, #1f242c); color: var(--text-primary);
+      border: 1px solid var(--tab-indicator, #58a6ff); padding: 5px 12px;
+      border-radius: 6px; font-size: 0.68rem; box-shadow: 0 4px 14px rgba(0,0,0,0.5);
+      z-index: 30; pointer-events: none; transition: opacity 0.2s ease;
+    }
+
     /* Editable expression rows (graphing-calculator-style) */
     .graph-expr-item {
       display: flex;

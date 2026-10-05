@@ -91,10 +91,11 @@
     // Handles functions, operators, precedence, and angle modes
     // ═══════════════════════════════════════════════════════════════
     function isFn(fn) {
+      const lower = String(fn).toLowerCase();
       return ['sin','cos','tan','asin','acos','atan','sinh','cosh','tanh','asinh','acosh','atanh',
               'csc','sec','cot','sqrt','cbrt','log','ln','abs','exp','fact',
-              'ceil','floor','round','gcd','lcm','mod','nCr','nPr','nthroot',
-              'mean','stdev','stdevp'].includes(fn);
+              'ceil','floor','round','gcd','lcm','mod','ncr','npr','nthroot',
+              'mean','stdev','stdevp'].includes(lower);
     }
 
     // Variadic statistics helpers (FreeCalc-style: mean(2,4,6), stdev(1,2,3))
@@ -104,10 +105,11 @@
       const n = args.length;
       if (n === 0) return NaN;
       const sum = args.reduce((a, b) => a + b, 0);
-      if (fn === 'mean') return sum / n;
+      const name = String(fn).toLowerCase();
+      if (name === 'mean') return sum / n;
       const m = sum / n;
       const ss = args.reduce((a, b) => a + (b - m) * (b - m), 0);
-      if (fn === 'stdev') return n < 2 ? NaN : Math.sqrt(ss / (n - 1));  // sample
+      if (name === 'stdev') return n < 2 ? NaN : Math.sqrt(ss / (n - 1));  // sample
       return Math.sqrt(ss / n);                                          // population
     }
 
@@ -115,7 +117,8 @@
     function applyFn(fn, val, val2) {
       const d=state.angleMode==='DEG';  // Degree mode: convert to radians first
       const R=Math,PI=R.PI;
-      switch(fn){
+      const name=String(fn).toLowerCase();
+      switch(name){
         case'sin':return d?R.sin(val*PI/180):R.sin(val);
         case'cos':return d?R.cos(val*PI/180):R.cos(val);
         case'tan':return d?R.tan(val*PI/180):R.tan(val);
@@ -144,8 +147,8 @@
         case'gcd':return gcd(val,val2);   // Greatest Common Divisor
         case'lcm':return lcm(val,val2);   // Least Common Multiple
         case'mod':return val2===0?NaN:((val%val2)+val2)%val2;     // Modulo
-        case'nCr':return nCr(val,val2);    // Combinations
-        case'nPr':return nPr(val,val2);    // Permutations
+        case'ncr':return nCr(val,val2);    // Combinations
+        case'npr':return nPr(val,val2);    // Permutations
         case'nthroot': {                                          // Nth root (odd roots of negatives are real, like FreeCalc)
           if (val2 === 0) return NaN;
           if (val < 0) return (val2 % 2 === 1) ? -R.pow(-val, 1 / val2) : NaN;
@@ -196,13 +199,14 @@
         } else if (/[a-zA-Zαπτθ]/.test(expr[i])) {                          // Function or variable name (θ = theta, for polar curves)
           let n = '';
           while (i < expr.length && /[a-zA-Zαπτθ]/.test(expr[i])) { n += expr[i]; i++; }
+          const lower = n.toLowerCase();
           // Check if it's a known function or a variable like π, τ, e
-          if (n === 'π' || n === 'pi') tokens.push({ type: 'number', value: Math.PI });
-          else if (n === 'τ' || n === 'tau') tokens.push({ type: 'number', value: Math.PI * 2 });
-          else if (n === 'e') tokens.push({ type: 'number', value: Math.E });
-          else if (n === 'ans') tokens.push({ type: 'number', value: state.lastResult !== null ? state.lastResult : 0 });  // ans = last result (0 if none yet)
-          else if (n === 'theta' || n === 'θ') tokens.push({ type: 'variable', value: 'θ' });  // theta spelled out or as θ
-          else if (isFn(n)) tokens.push({ type: 'function', value: n });
+          if (n === 'π' || lower === 'pi') tokens.push({ type: 'number', value: Math.PI });
+          else if (n === 'τ' || lower === 'tau') tokens.push({ type: 'number', value: Math.PI * 2 });
+          else if (lower === 'e' && n.length === 1) tokens.push({ type: 'number', value: Math.E });
+          else if (lower === 'ans') tokens.push({ type: 'number', value: state.lastResult !== null ? state.lastResult : 0 });  // ans = last result (0 if none yet)
+          else if (lower === 'theta' || n === 'θ') tokens.push({ type: 'variable', value: 'θ' });  // theta spelled out or as θ
+          else if (isFn(lower)) tokens.push({ type: 'function', value: lower });
           else {
             // GRAPHING-CALCULATOR-STYLE VARIABLE×FUNCTION/CONSTANT SPLITTING
             // "xsin(x)" should mean x·sin(x), "2xexp(-x^2)" = 2·x·exp(-x²) and
@@ -219,14 +223,15 @@
             let split = false;
             for (let k = 1; k < n.length && !split; k++) {
               const pre = n.slice(0, k), suf = n.slice(k);
+              const sufLower = suf.toLowerCase();
               if (!/^[a-zA-Zαπτθ]$/.test(pre)) continue;
-              if (isFn(suf)) {
-                tokens.push(varTok(pre), { type: 'function', value: suf });
+              if (isFn(sufLower)) {
+                tokens.push(varTok(pre), { type: 'function', value: sufLower });
                 split = true;
-              } else if (suf === 'pi' || suf === 'π') {
+              } else if (sufLower === 'pi' || suf === 'π') {
                 tokens.push(varTok(pre), { type: 'number', value: Math.PI });
                 split = true;
-              } else if (suf === 'tau' || suf === 'τ') {
+              } else if (sufLower === 'tau' || suf === 'τ') {
                 tokens.push(varTok(pre), { type: 'number', value: Math.PI * 2 });
                 split = true;
               } else if (/^[a-zA-Zαπτθ]$/.test(suf)) {
@@ -289,6 +294,9 @@
           }
           expectUnary = false;
         } else { // Operator
+          if (tok.value === '+' && expectUnary) {
+            continue; // Unary plus is a no-op identity: +5 === 5, 3*+2 === 6
+          }
           if (tok.value === '-' && expectUnary) { tok.value = '_'; }  // Unary minus (negation)
           while (stack.length && stack[stack.length-1].type === 'operator' &&
                  stack[stack.length-1].value !== '(' &&
@@ -321,21 +329,34 @@
           const a = stack.pop();
           stack.push(a === undefined ? NaN : a / 100);
         } else if (tok.type === 'function') {
+          const fnName = tok.value.toLowerCase();
           const args = [];
           // Variadic statistics functions: mean/stdev/stdevp take any number of args
-          if (tok.value === 'mean' || tok.value === 'stdev' || tok.value === 'stdevp') {
+          if (fnName === 'mean' || fnName === 'stdev' || fnName === 'stdevp') {
             const argc = tok.argc || 1;
             for (let i = 0; i < argc; i++) args.push(stack.pop());
             args.reverse();
-            stack.push(applyVariadic(tok.value, args));
+            stack.push(applyVariadic(fnName, args));
           }
           // Fixed-arity multi-arg functions (e.g. nCr(5,2), gcd(6,9), nthroot(8,3))
-          else if (tok.value === 'gcd' || tok.value === 'lcm' || tok.value === 'mod' ||
-                   tok.value === 'nCr' || tok.value === 'nPr' || tok.value === 'nthroot') {
-            args.push(stack.pop(), stack.pop());  // Pop two args (order matters!)
-            stack.push(applyFn(tok.value, args[1], args[0]));  // Apply with arguments reversed
+          else if (fnName === 'gcd' || fnName === 'lcm' || fnName === 'mod' ||
+                   fnName === 'ncr' || fnName === 'npr' || fnName === 'nthroot') {
+            if (tok.argc !== undefined && tok.argc !== 2) {
+              stack.push(NaN);
+            } else if (stack.length < 2) {
+              stack.push(NaN);
+            } else {
+              args.push(stack.pop(), stack.pop());  // Pop two args (order matters!)
+              stack.push(applyFn(fnName, args[1], args[0]));  // Apply with arguments reversed
+            }
           } else {
-            stack.push(applyFn(tok.value, stack.pop()));  // Single arg function
+            if (tok.argc !== undefined && tok.argc > 1) {
+              stack.push(NaN);
+            } else if (stack.length < 1) {
+              stack.push(NaN);
+            } else {
+              stack.push(applyFn(fnName, stack.pop()));  // Single arg function
+            }
           }
         } else if (tok.type === 'operator') {
           if (tok.value === '_') {               // Unary minus pops exactly ONE operand
@@ -368,7 +389,7 @@
           }
         }
       }
-      return stack[0];  // Final result
+      return stack.length === 1 ? stack[0] : NaN;  // Final result (safe against leftovers)
     }
 
     // Master evaluate function: tokenize → RPN → evaluate
@@ -407,6 +428,7 @@
       }
       if (prec === 'sci') return num.toExponential(4);          // Scientific notation
       if (prec === 'eng') {                                      // Engineering notation
+        if (num === 0) return '0.000e0';
         const e = Math.floor(Math.log10(Math.abs(num)) / 3) * 3;
         const m = num / Math.pow(10, e);
         return m.toFixed(3) + 'e' + e;

@@ -116,6 +116,18 @@
     const viewZoomVal = document.getElementById('viewZoomVal');
     const viewAspectSlider = document.getElementById('viewAspectSlider');
     const viewAspectVal = document.getElementById('viewAspectVal');
+    // Table of values and share controls
+    const graphTableBtn = document.getElementById('graphTableBtn');
+    const graphShareBtn = document.getElementById('graphShareBtn');
+    const graphTableModal = document.getElementById('graphTableModal');
+    const tableModalClose = document.getElementById('tableModalClose');
+    const tableXStart = document.getElementById('tableXStart');
+    const tableXEnd = document.getElementById('tableXEnd');
+    const tableXStep = document.getElementById('tableXStep');
+    const tableCopyBtn = document.getElementById('tableCopyBtn');
+    const tableCsvBtn = document.getElementById('tableCsvBtn');
+    const tableContent = document.getElementById('tableContent');
+    const graphToast = document.getElementById('graphToast');
 
     // GRAPHING ENGINE
     // ═══════════════════════════════════════════════════════════════
@@ -228,6 +240,69 @@
       // Tangent line: "tangent(expr, point)" — point is a number or a letter
       m = t.match(/^tangent\s*\((.+?),\s*([^)]+)\)\s*$/i);
       if (m) return { kind: 'tangent', yExpr: m[1].trim(), point: m[2].trim() };
+
+      // Inequality forms: y <= x^2, y < 2x+1, x <= 3, x^2 + y^2 <= 25, etc.
+      const findTopLevelIneq = (str) => {
+        let depth = 0;
+        for (let i = 0; i < str.length; i++) {
+          const ch = str[i];
+          if (ch === '(') depth++;
+          else if (ch === ')') depth--;
+          if (depth === 0) {
+            if (str.slice(i, i + 4) === '\\leq') return { index: i, length: 4, op: '<=' };
+            if (str.slice(i, i + 4) === '\\geq') return { index: i, length: 4, op: '>=' };
+            if (str.slice(i, i + 3) === '\\le') return { index: i, length: 3, op: '<=' };
+            if (str.slice(i, i + 3) === '\\ge') return { index: i, length: 3, op: '>=' };
+            if (str.slice(i, i + 2) === '<=') return { index: i, length: 2, op: '<=' };
+            if (str.slice(i, i + 2) === '>=') return { index: i, length: 2, op: '>=' };
+            if (ch === '≤') return { index: i, length: 1, op: '<=' };
+            if (ch === '≥') return { index: i, length: 1, op: '>=' };
+            if (ch === '<') return { index: i, length: 1, op: '<' };
+            if (ch === '>') return { index: i, length: 1, op: '>' };
+          }
+        }
+        return null;
+      };
+
+      const ineq = findTopLevelIneq(t);
+      if (ineq) {
+        const lhsRaw = t.slice(0, ineq.index).trim();
+        const rhsRaw = t.slice(ineq.index + ineq.length).trim();
+        const op = ineq.op;
+        const strict = (op === '<' || op === '>');
+
+        // Derivative forms: y' <= x^2, f'(x) < x^2
+        const lhsDeriv = lhsRaw.match(/^(?:f('+)\s*\(\s*x\s*\)|y('+))$/i);
+        if (lhsDeriv) {
+          const order = (lhsDeriv[1] || lhsDeriv[2]).length;
+          return { kind: 'inequality', subtype: 'derivative', order, op, strict, yExpr: rhsRaw };
+        }
+
+        // Standard y or f(x) on LHS: y <= x^2, f(x) > 2x + 1
+        const isLhsY = /^(y|f\s*\(\s*x\s*\))$/i.test(lhsRaw);
+        const isRhsY = /^(y|f\s*\(\s*x\s*\))$/i.test(rhsRaw);
+        if (isLhsY) {
+          return { kind: 'inequality', subtype: 'y', op, strict, yExpr: rhsRaw };
+        }
+        if (isRhsY) {
+          const flip = { '<=': '>=', '>=': '<=', '<': '>', '>': '<' };
+          return { kind: 'inequality', subtype: 'y', op: flip[op], strict, yExpr: lhsRaw };
+        }
+
+        // Vertical inequality: x <= 3, -2 < x
+        const isLhsX = /^x$/i.test(lhsRaw);
+        const isRhsX = /^x$/i.test(rhsRaw);
+        if (isLhsX && !/[y]/i.test(rhsRaw)) {
+          return { kind: 'inequality', subtype: 'x', op, strict, xVal: rhsRaw };
+        }
+        if (isRhsX && !/[y]/i.test(lhsRaw)) {
+          const flip = { '<=': '>=', '>=': '<=', '<': '>', '>': '<' };
+          return { kind: 'inequality', subtype: 'x', op: flip[op], strict, xVal: lhsRaw };
+        }
+
+        // General implicit inequality: x^2 + y^2 <= 25
+        return { kind: 'inequality', subtype: 'implicit', op, strict, lhsExpr: lhsRaw, rhsExpr: rhsRaw };
+      }
       // Cartesian with a "y =" or "f(x) =" prefix. "y = d/dx x^2" also
       // becomes a derivative row after the prefix is stripped.
       const stripped = stripPrefix(t);
@@ -361,7 +436,8 @@
       // t for parametric, θ for polar, and BOTH x & y for implicit equations.
       const axis = parsed.kind === 'parametric' ? 't'
         : parsed.kind === 'polar' ? 'θ'
-        : parsed.kind === 'implicit' ? 'xy' : 'x';
+        : parsed.kind === 'implicit' ? 'xy'
+        : (parsed.kind === 'inequality' && parsed.subtype === 'implicit') ? 'xy' : 'x';
       const src = parsed.kind === 'parametric'
         ? parsed.xExpr + ',' + parsed.yExpr
         : parsed.kind === 'polar' ? parsed.rExpr
@@ -372,6 +448,10 @@
         // Integral rows include the bound letters, so "integral(x^2, 0, a)"
         // gets an "a" slider that moves the upper bound of the area.
         : parsed.kind === 'integral' ? parsed.yExpr + ',' + parsed.aExpr + ',' + parsed.bExpr
+        : parsed.kind === 'inequality'
+          ? (parsed.subtype === 'implicit' ? parsed.lhsExpr + ',' + parsed.rhsExpr
+            : parsed.subtype === 'x' ? parsed.xVal
+            : parsed.yExpr)
         : parsed.yExpr;
       const vars = getVariableNames(src).filter(v => !axis.includes(v));
       expr.sliders = expr.sliders || {};
@@ -393,12 +473,20 @@
         : p.kind === 'polar' ? p.rExpr
         : p.kind === 'implicit' ? p.lhsExpr + p.rhsExpr
         : p.kind === 'tangent' ? p.yExpr + p.point
-        : p.kind === 'integral' ? p.yExpr + p.aExpr + p.bExpr : p.yExpr;
+        : p.kind === 'integral' ? p.yExpr + p.aExpr + p.bExpr
+        : p.kind === 'inequality'
+          ? (p.subtype === 'implicit' ? p.lhsExpr + p.rhsExpr
+            : p.subtype === 'x' ? p.xVal
+            : p.yExpr)
+        : p.yExpr;
       return !String(text).trim() || !body
         || (p.kind === 'parametric' && (!p.xExpr || !p.yExpr))
         || (p.kind === 'implicit' && (!p.lhsExpr || !p.rhsExpr))
         || (p.kind === 'tangent' && (!p.yExpr || !p.point))
-        || (p.kind === 'integral' && (!p.yExpr || !p.aExpr || !p.bExpr));
+        || (p.kind === 'integral' && (!p.yExpr || !p.aExpr || !p.bExpr))
+        || (p.kind === 'inequality' && p.subtype === 'implicit' && (!p.lhsExpr || !p.rhsExpr))
+        || (p.kind === 'inequality' && p.subtype === 'x' && !p.xVal)
+        || (p.kind === 'inequality' && (p.subtype === 'y' || p.subtype === 'derivative') && !p.yExpr);
     }
 
     // Collect the current slider values as a plain { name: value } map
@@ -421,6 +509,10 @@
         : parsed.kind === 'implicit' ? parsed.lhsExpr + ',' + parsed.rhsExpr
         : parsed.kind === 'tangent' ? parsed.yExpr + ',' + parsed.point
         : parsed.kind === 'integral' ? parsed.yExpr + ',' + parsed.aExpr + ',' + parsed.bExpr
+        : parsed.kind === 'inequality'
+          ? (parsed.subtype === 'implicit' ? parsed.lhsExpr + ',' + parsed.rhsExpr
+            : parsed.subtype === 'x' ? parsed.xVal
+            : parsed.yExpr)
         : parsed.yExpr;
       if (!t) return '';
       // The tangent point must be a number (tangent(x^2, 2)) or a single
@@ -436,12 +528,6 @@
         if (depth < 0) return 'Unbalanced ")"';
       }
       if (depth !== 0) return 'Missing ")"';
-      // Inequalities aren't supported yet — the keypad's <, >, ≤, ≥ keys
-      // insert these chars, so give a friendly hint instead of a bare
-      // "Invalid" error. (Equations with '=' are fine and unaffected.)
-      if (/[<>≤≥]/.test(String(text))) {
-        return 'Inequalities ( <, >, ≤, ≥ ) are not supported yet — try an equation like "y = x^2"';
-      }
       // Unknown multi-letter names are errors; single letters are sliders/params.
       const tokens = tokenize(t);
       for (const tok of tokens) {
@@ -658,6 +744,56 @@
             ctx.lineTo(p2.x, p2.y);
             tangentDots.push({ x: a, y: fa, color: expr.color });
           }
+        } else if (parsed.kind === 'inequality') {
+          if (parsed.subtype === 'x') {
+            const cVal = resolveBound(parsed.xVal, vals);
+            if (isFinite(cVal)) {
+              const sx = mathToScreen(cVal, 0, width, height).x;
+              ctx.fillStyle = hexWithAlpha(expr.color || '#58a6ff', 0.18);
+              if (parsed.op === '<=' || parsed.op === '<') {
+                const wFill = Math.max(0, Math.min(width, sx));
+                ctx.fillRect(0, 0, wFill, height);
+              } else {
+                const startX = Math.max(0, Math.min(width, sx));
+                ctx.fillRect(startX, 0, width - startX, height);
+              }
+              ctx.beginPath();
+              ctx.strokeStyle = expr.color || '#58a6ff';
+              ctx.lineWidth = 2;
+              if (parsed.strict) ctx.setLineDash([8, 6]);
+              else ctx.setLineDash([]);
+              ctx.moveTo(sx, 0);
+              ctx.lineTo(sx, height);
+              ctx.stroke();
+              ctx.setLineDash([]);
+            }
+          } else if (parsed.subtype === 'implicit') {
+            drawImplicitInequalityShading(ctx, parsed, vals, width, height, expr.color);
+            ctx.beginPath();
+            ctx.strokeStyle = expr.color || '#58a6ff';
+            ctx.lineWidth = 2;
+            if (parsed.strict) ctx.setLineDash([8, 6]);
+            else ctx.setLineDash([]);
+            drawImplicitContour(ctx, { lhsExpr: parsed.lhsExpr, rhsExpr: parsed.rhsExpr }, vals, width, height);
+            ctx.stroke();
+            ctx.setLineDash([]);
+          } else {
+            drawCartesianInequalityShading(ctx, parsed, vals, width, height, expr.color);
+            ctx.beginPath();
+            ctx.strokeStyle = expr.color || '#58a6ff';
+            ctx.lineWidth = 2;
+            if (parsed.strict) ctx.setLineDash([8, 6]);
+            else ctx.setLineDash([]);
+            for (let i = 0; i <= samples; i++) {
+              const px = (i / samples) * (xMax - xMin) + xMin;
+              const py = parsed.subtype === 'derivative'
+                ? numericDerivative(parsed.yExpr, px, vals, parsed.order)
+                : evaluate(parsed.yExpr, { x: px, ...vals });
+              plot(px, py);
+            }
+            ctx.stroke();
+            ctx.setLineDash([]);
+          }
         } else {
           for (let i = 0; i <= samples; i++) {
             const px = (i / samples) * (xMax - xMin) + xMin;
@@ -691,33 +827,36 @@
         for (const e of graphState.expressions) {
           if (!e.visible) continue;
           const p = parseGraphExpression(e.text);
-          if (p && (p.kind === 'cartesian' || p.kind === 'derivative')) { traceRow = { e, p }; break; }
+          if (p && (p.kind === 'cartesian' || p.kind === 'derivative' || (p.kind === 'inequality' && (p.subtype === 'y' || p.subtype === 'derivative')))) {
+            traceRow = { e, p }; break;
+          }
         }
         if (traceRow) {
           const { e, p } = traceRow;
           const vals = sliderValues(e);
-          const fy = p.kind === 'derivative'
+          const isDeriv = p.kind === 'derivative' || (p.kind === 'inequality' && p.subtype === 'derivative');
+          const fy = isDeriv
             ? numericDerivative(p.yExpr, hx, vals, p.order)
             : evaluate(p.yExpr, { x: hx, ...vals });
           if (isFinite(fy)) {
             const s = mathToScreen(hx, fy, width, height);
-            // Tangent line at the trace point (for cartesian rows)
-            if (p.kind === 'cartesian') {
-              const m = numericDerivative(p.yExpr, hx, vals);
-              if (isFinite(m)) {
-                const p1 = mathToScreen(xMin, fy + m * (xMin - hx), width, height);
-                const p2 = mathToScreen(xMax, fy + m * (xMax - hx), width, height);
-                ctx.beginPath();
-                ctx.strokeStyle = e.color;
-                ctx.lineWidth = 1;
-                ctx.setLineDash([6, 5]);
-                ctx.globalAlpha = 0.75;
-                ctx.moveTo(p1.x, p1.y);
-                ctx.lineTo(p2.x, p2.y);
-                ctx.stroke();
-                ctx.setLineDash([]);
-                ctx.globalAlpha = 1;
-              }
+            // Tangent line at the trace point (for cartesian, derivative, and inequality rows)
+            const m = isDeriv
+              ? numericDerivative(p.yExpr, hx, vals, (p.order || 1) + 1)
+              : numericDerivative(p.yExpr, hx, vals);
+            if (isFinite(m)) {
+              const p1 = mathToScreen(xMin, fy + m * (xMin - hx), width, height);
+              const p2 = mathToScreen(xMax, fy + m * (xMax - hx), width, height);
+              ctx.beginPath();
+              ctx.strokeStyle = e.color;
+              ctx.lineWidth = 1;
+              ctx.setLineDash([6, 5]);
+              ctx.globalAlpha = 0.75;
+              ctx.moveTo(p1.x, p1.y);
+              ctx.lineTo(p2.x, p2.y);
+              ctx.stroke();
+              ctx.setLineDash([]);
+              ctx.globalAlpha = 1;
             }
             // Marker dot ON the curve
             ctx.beginPath();
@@ -728,7 +867,7 @@
             ctx.strokeStyle = cssVar('--canvas-bg', '#0d0e12');
             ctx.stroke();
             // Readout chip (x, f(x), f'(x)) pinned near the marker
-            const m2 = p.kind === 'cartesian' ? numericDerivative(p.yExpr, hx, vals) : NaN;
+            const m2 = m;
             const txt = `(${hx.toFixed(2)}, ${fy.toFixed(2)})${isFinite(m2) ? '  m=' + m2.toFixed(2) : ''}`;
             const pad = 6, fh = 14;
             ctx.font = '12px Consolas, monospace';
@@ -846,7 +985,9 @@
       // subdivide, split into 4 quadrants and recurse; otherwise draw it.
       const refine = (depth, v00, v10, v01, v11, xs0, ys0, xs1, ys1) => {
         if (!maybeContains(v00, v10, v01, v11)) return;   // empty cell — skip
-        if (depth >= MAX_DEPTH || xs1 - xs0 < 1 || ys1 - ys0 < 1) {
+        const pixelW = ((xs1 - xs0) / (xMax - xMin)) * width;
+        const pixelH = ((ys1 - ys0) / (yMax - yMin)) * height;
+        if (depth >= MAX_DEPTH || pixelW <= 2 || pixelH <= 2) {
           emitCell(v00, v10, v01, v11, xs0, ys0, xs1, ys1);
           return;
         }
@@ -866,6 +1007,81 @@
           const xs0 = xMin + (c / cols) * (xMax - xMin), xs1 = xMin + ((c + 1) / cols) * (xMax - xMin);
           const ys0 = yMin + (r / rows) * (yMax - yMin), ys1 = yMin + ((r + 1) / rows) * (yMax - yMin);
           refine(0, g[r][c], g[r][c + 1], g[r + 1][c], g[r + 1][c + 1], xs0, ys0, xs1, ys1);
+        }
+      }
+    }
+
+    // Shading helper for cartesian & derivative inequalities (y <= f(x), y > f(x), etc.)
+    function drawCartesianInequalityShading(ctx, parsed, vals, width, height, color) {
+      const { xMin, xMax } = graphState;
+      const n = Math.max(2, Math.round(width * 1.5));
+      const op = parsed.op;
+      const isBelow = (op === '<=' || op === '<');
+      const targetScreenY = isBelow ? height : 0;
+      const fillStyle = hexWithAlpha(color || '#58a6ff', 0.18);
+
+      let currentSegment = [];
+      const flushSegment = (seg) => {
+        if (seg.length < 2) return;
+        ctx.beginPath();
+        ctx.moveTo(seg[0].sx, seg[0].sy);
+        for (let j = 1; j < seg.length; j++) {
+          ctx.lineTo(seg[j].sx, seg[j].sy);
+        }
+        ctx.lineTo(seg[seg.length - 1].sx, targetScreenY);
+        ctx.lineTo(seg[0].sx, targetScreenY);
+        ctx.closePath();
+        ctx.fillStyle = fillStyle;
+        ctx.fill();
+      };
+
+      let prevSX = null, prevSY = null;
+      for (let i = 0; i <= n; i++) {
+        const px = xMin + (i / n) * (xMax - xMin);
+        const py = parsed.subtype === 'derivative'
+          ? numericDerivative(parsed.yExpr, px, vals, parsed.order)
+          : evaluate(parsed.yExpr, { x: px, ...vals });
+
+        if (isFinite(py) && Math.abs(py) < 1e10) {
+          const { x: sx, y: sy } = mathToScreen(px, py, width, height);
+          if (prevSY !== null && Math.abs(sy - prevSY) > height * 2.5) {
+            flushSegment(currentSegment);
+            currentSegment = [];
+          }
+          const clampedSY = Math.max(-height * 2, Math.min(height * 3, sy));
+          currentSegment.push({ sx, sy: clampedSY });
+          prevSX = sx;
+          prevSY = sy;
+        } else {
+          flushSegment(currentSegment);
+          currentSegment = [];
+          prevSX = null;
+          prevSY = null;
+        }
+      }
+      flushSegment(currentSegment);
+    }
+
+    // Shading helper for 2D implicit inequalities (x^2 + y^2 <= 25, etc.)
+    function drawImplicitInequalityShading(ctx, parsed, vals, width, height, color) {
+      const f = makeImplicitFn(parsed.lhsExpr, parsed.rhsExpr);
+      const cols = Math.max(20, Math.round(width / 10));
+      const rows = Math.max(16, Math.round(height / 10));
+      const cellW = width / cols;
+      const cellH = height / rows;
+      const op = parsed.op;
+      const satisfies = (v) => (op === '<=' || op === '<') ? (v <= 0) : (v >= 0);
+
+      ctx.fillStyle = hexWithAlpha(color || '#58a6ff', 0.16);
+      for (let r = 0; r < rows; r++) {
+        const ym = graphState.yMin + ((rows - 1 - r + 0.5) / rows) * (graphState.yMax - graphState.yMin);
+        const sy = r * cellH;
+        for (let c = 0; c < cols; c++) {
+          const xm = graphState.xMin + ((c + 0.5) / cols) * (graphState.xMax - graphState.xMin);
+          const v = f(xm, ym, vals);
+          if (isFinite(v) && satisfies(v)) {
+            ctx.fillRect(c * cellW, sy, cellW + 0.5, cellH + 0.5);
+          }
         }
       }
     }
@@ -990,22 +1206,24 @@
         const expr = graphState.expressions[i];
         const valueEl = rows[i] && rows[i].querySelector('.expr-value');
         if (!valueEl) continue;
-        // Only cartesian + derivative rows get a "y ≈" preview; parametric/
+        // Only cartesian + derivative + inequality rows get a "y ≈" preview; parametric/
         // polar/tangent need t/θ/point lookups that don't map to a single x
         const parsed = parseGraphExpression(expr.text);
-        if ((parsed.kind !== 'cartesian' && parsed.kind !== 'derivative') || !expr.visible || graphState.hoverX === null) {
+        const isCartesianLike = parsed.kind === 'cartesian' || parsed.kind === 'derivative' || (parsed.kind === 'inequality' && (parsed.subtype === 'y' || parsed.subtype === 'derivative'));
+        if (!isCartesianLike || !expr.visible || graphState.hoverX === null) {
           valueEl.textContent = '';
           continue;
         }
         if (validateExpression(expr.text)) { valueEl.textContent = ''; continue; }
-        const y = parsed.kind === 'derivative'
+        const isDeriv = parsed.kind === 'derivative' || (parsed.kind === 'inequality' && parsed.subtype === 'derivative');
+        const y = isDeriv
           ? numericDerivative(parsed.yExpr, graphState.hoverX, sliderValues(expr), parsed.order)
           : evaluate(parsed.yExpr, { x: graphState.hoverX, ...sliderValues(expr) });
         if (isFinite(y)) {
-          // "y ≈ " / "y' ≈ " / "y'' ≈ " — the label matches the derivative order
-          const label = parsed.kind === 'derivative'
+          // "y ≈ " / "y' ≈ " / "boundary ≈ " — the label matches curve type
+          const label = isDeriv
             ? 'y' + "'".repeat(parsed.order || 1) + ' ≈ '
-            : 'y ≈ ';
+            : (parsed.kind === 'inequality' ? 'boundary ≈ ' : 'y ≈ ');
           valueEl.textContent = label + (Math.abs(y) >= 10000 || (y !== 0 && Math.abs(y) < 0.0001)
             ? y.toExponential(3) : (+y.toFixed(4)).toString());
         } else {
@@ -1307,13 +1525,257 @@
       }
     }
 
+    // ── SHAREABLE GRAPH STATE & TOAST ────────────────────────────────────
+    function showGraphToast(msg) {
+      if (!graphToast) return;
+      graphToast.textContent = msg;
+      graphToast.style.display = 'block';
+      graphToast.style.opacity = '1';
+      clearTimeout(showGraphToast._timer);
+      showGraphToast._timer = setTimeout(() => {
+        graphToast.style.opacity = '0';
+        setTimeout(() => { graphToast.style.display = 'none'; }, 200);
+      }, 2600);
+    }
+
+    function exportGraphStateToUrl() {
+      const data = {
+        v: 1,
+        exprs: graphState.expressions.map(e => ({
+          text: e.text,
+          visible: e.visible !== false,
+          color: e.color,
+          sliders: e.sliders ? Object.fromEntries(Object.entries(e.sliders).map(([k, s]) => [k, s.value])) : {}
+        })),
+        bounds: [
+          +graphState.xMin.toFixed(4),
+          +graphState.xMax.toFixed(4),
+          +graphState.yMin.toFixed(4),
+          +graphState.yMax.toFixed(4)
+        ]
+      };
+      const json = JSON.stringify(data);
+      const encoded = encodeURIComponent(json);
+      const base = window.location.href.split('#')[0];
+      return { url: base + '#graph=' + encoded, hash: '#graph=' + encoded };
+    }
+
+    function importGraphStateFromUrl(hash) {
+      if (!hash || !hash.includes('#graph=')) return false;
+      try {
+        const raw = hash.slice(hash.indexOf('#graph=') + 7);
+        const json = decodeURIComponent(raw);
+        const data = JSON.parse(json);
+        if (!data || !Array.isArray(data.exprs)) return false;
+
+        graphState.expressions = data.exprs.map(e => {
+          const expr = {
+            text: e.text || '',
+            visible: e.visible !== false,
+            color: e.color || '#58a6ff',
+            sliders: {}
+          };
+          if (e.sliders && typeof e.sliders === 'object') {
+            for (const [k, v] of Object.entries(e.sliders)) {
+              expr.sliders[k] = { min: -10, max: 10, step: 0.1, value: Number(v) || 0 };
+            }
+          }
+          return expr;
+        });
+
+        if (Array.isArray(data.bounds) && data.bounds.length === 4) {
+          const [xmin, xmax, ymin, ymax] = data.bounds.map(Number);
+          if (isFinite(xmin) && isFinite(xmax) && isFinite(ymin) && isFinite(ymax) && xmax > xmin && ymax > ymin) {
+            graphState.xMin = xmin;
+            graphState.xMax = xmax;
+            graphState.yMin = ymin;
+            graphState.yMax = ymax;
+          }
+        }
+
+        renderGraphExprList();
+        renderLegend();
+        renderGraph();
+        showGraphToast('Graph loaded from link');
+        return true;
+      } catch (err) {
+        console.warn('Could not parse graph link:', err);
+        return false;
+      }
+    }
+
+    // ── TABLE OF VALUES MODAL ───────────────────────────────────────────
+    function getTablePlottableFunctions() {
+      const fns = [];
+      for (let idx = 0; idx < graphState.expressions.length; idx++) {
+        const expr = graphState.expressions[idx];
+        if (!expr.visible || !expr.text.trim()) continue;
+        if (validateExpression(expr.text)) continue;
+        const p = parseGraphExpression(expr.text);
+        const vals = sliderValues(expr);
+        if (p.kind === 'cartesian') {
+          fns.push({
+            label: expr.text.startsWith('y=') || expr.text.startsWith('f(x)=') ? expr.text : `y = ${expr.text}`,
+            color: expr.color || '#58a6ff',
+            fn: (x) => evaluate(p.yExpr, { x, ...vals })
+          });
+        } else if (p.kind === 'derivative') {
+          fns.push({
+            label: expr.text,
+            color: expr.color || '#58a6ff',
+            fn: (x) => numericDerivative(p.yExpr, x, vals, p.order)
+          });
+        } else if (p.kind === 'inequality' && (p.subtype === 'y' || p.subtype === 'derivative')) {
+          fns.push({
+            label: expr.text,
+            color: expr.color || '#58a6ff',
+            fn: (x) => p.subtype === 'derivative'
+              ? numericDerivative(p.yExpr, x, vals, p.order)
+              : evaluate(p.yExpr, { x, ...vals })
+          });
+        }
+      }
+      return fns;
+    }
+
+    function renderTableContent() {
+      if (!tableContent) return;
+      const fns = getTablePlottableFunctions();
+      if (fns.length === 0) {
+        tableContent.innerHTML = '<div style="color:var(--text-muted); text-align:center; padding: 24px 8px;">No visible functions to display.<br>Add an expression like <i>y = x²</i> to generate a table.</div>';
+        return;
+      }
+
+      let xStart = parseFloat(tableXStart ? tableXStart.value : -5);
+      let xEnd = parseFloat(tableXEnd ? tableXEnd.value : 5);
+      let xStep = parseFloat(tableXStep ? tableXStep.value : 1);
+
+      if (isNaN(xStart)) xStart = -5;
+      if (isNaN(xEnd)) xEnd = 5;
+      if (isNaN(xStep) || xStep <= 0) xStep = 1;
+      if (xEnd < xStart) { const tmp = xStart; xStart = xEnd; xEnd = tmp; }
+
+      const count = Math.min(1000, Math.floor((xEnd - xStart) / xStep) + 1);
+
+      let html = '<table class="graph-table"><thead><tr><th>x</th>';
+      for (const f of fns) {
+        const safeLabel = String(f.label).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        html += `<th><span class="table-dot" style="background:${f.color}"></span>${safeLabel}</th>`;
+      }
+      html += '</tr></thead><tbody>';
+
+      const formatVal = (v) => {
+        if (!isFinite(v)) return '<span style="color:var(--text-muted)">undefined</span>';
+        if (Math.abs(v) < 1e-12) return '0';
+        if (Math.abs(v) >= 1e6 || Math.abs(v) <= 1e-4) return v.toExponential(4);
+        return (+v.toFixed(6)).toString();
+      };
+
+      for (let i = 0; i < count; i++) {
+        const x = xStart + i * xStep;
+        const xFormatted = (+x.toFixed(6)).toString();
+        html += `<tr><td>${xFormatted}</td>`;
+        for (const f of fns) {
+          const y = f.fn(x);
+          html += `<td>${formatVal(y)}</td>`;
+        }
+        html += '</tr>';
+      }
+      html += '</tbody></table>';
+      tableContent.innerHTML = html;
+    }
+
+    function openTableModal() {
+      if (!graphTableModal) return;
+      graphTableModal.style.display = 'flex';
+      renderTableContent();
+    }
+
+    function closeTableModal() {
+      if (graphTableModal) graphTableModal.style.display = 'none';
+    }
+
+    function exportTableCsv() {
+      const fns = getTablePlottableFunctions();
+      if (fns.length === 0) { showGraphToast('No functions to export'); return; }
+
+      let xStart = parseFloat(tableXStart ? tableXStart.value : -5);
+      let xEnd = parseFloat(tableXEnd ? tableXEnd.value : 5);
+      let xStep = parseFloat(tableXStep ? tableXStep.value : 1);
+      if (isNaN(xStart)) xStart = -5;
+      if (isNaN(xEnd)) xEnd = 5;
+      if (isNaN(xStep) || xStep <= 0) xStep = 1;
+      if (xEnd < xStart) { const tmp = xStart; xStart = xEnd; xEnd = tmp; }
+      const count = Math.min(2000, Math.floor((xEnd - xStart) / xStep) + 1);
+
+      let csv = 'x,' + fns.map(f => '"' + f.label.replace(/"/g, '""') + '"').join(',') + '\n';
+      for (let i = 0; i < count; i++) {
+        const x = xStart + i * xStep;
+        const row = [(+x.toFixed(6)).toString()];
+        for (const f of fns) {
+          const y = f.fn(x);
+          row.push(isFinite(y) ? (+y.toFixed(6)).toString() : '');
+        }
+        csv += row.join(',') + '\n';
+      }
+
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'graph_table.csv';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      showGraphToast('CSV exported!');
+    }
+
+    function copyTableToClipboard() {
+      const fns = getTablePlottableFunctions();
+      if (fns.length === 0) { showGraphToast('No functions to copy'); return; }
+
+      let xStart = parseFloat(tableXStart ? tableXStart.value : -5);
+      let xEnd = parseFloat(tableXEnd ? tableXEnd.value : 5);
+      let xStep = parseFloat(tableXStep ? tableXStep.value : 1);
+      if (isNaN(xStart)) xStart = -5;
+      if (isNaN(xEnd)) xEnd = 5;
+      if (isNaN(xStep) || xStep <= 0) xStep = 1;
+      if (xEnd < xStart) { const tmp = xStart; xStart = xEnd; xEnd = tmp; }
+      const count = Math.min(1000, Math.floor((xEnd - xStart) / xStep) + 1);
+
+      let tsv = 'x\t' + fns.map(f => f.label).join('\t') + '\n';
+      for (let i = 0; i < count; i++) {
+        const x = xStart + i * xStep;
+        const row = [(+x.toFixed(6)).toString()];
+        for (const f of fns) {
+          const y = f.fn(x);
+          row.push(isFinite(y) ? (+y.toFixed(6)).toString() : 'undefined');
+        }
+        tsv += row.join('\t') + '\n';
+      }
+
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(tsv).then(() => {
+          showGraphToast('Table copied to clipboard!');
+        }).catch(() => {
+          showGraphToast('Could not access clipboard');
+        });
+      }
+    }
+
     // Initialize the graph canvas and event handlers
     function initGraph() {
       // Restore a previously saved session (expressions, viewport, ranges) so
-      // the graph survives page reloads. Only falls back to the default curve
-      // when there is nothing saved (or storage is unavailable).
+      // the graph survives page reloads. First check for shareable URL hash.
       if (graphState.expressions.length === 0) {
-        const restored = loadGraphState();
+        let restored = false;
+        if (typeof location !== 'undefined' && location.hash && location.hash.startsWith('#graph=')) {
+          restored = importGraphStateFromUrl(location.hash);
+        }
+        if (!restored) {
+          restored = loadGraphState();
+        }
         if (restored) {
           renderGraphExprList();
           renderLegend();
@@ -1350,6 +1812,61 @@
         // Clicking anywhere else closes the cheat sheet
         document.addEventListener('click', () => graphHelp.classList.remove('open'));
       }
+
+      // ── Table of Values modal controls ──
+      if (graphTableBtn) graphTableBtn.addEventListener('click', openTableModal);
+      if (tableModalClose) tableModalClose.addEventListener('click', closeTableModal);
+      if (graphTableModal) {
+        graphTableModal.addEventListener('click', (e) => {
+          if (e.target === graphTableModal) closeTableModal();
+        });
+      }
+      [tableXStart, tableXEnd, tableXStep].forEach(inp => {
+        if (inp) {
+          inp.addEventListener('input', renderTableContent);
+          inp.addEventListener('change', renderTableContent);
+        }
+      });
+      if (tableCopyBtn) tableCopyBtn.addEventListener('click', copyTableToClipboard);
+      if (tableCsvBtn) tableCsvBtn.addEventListener('click', exportTableCsv);
+
+      // ── Share button: copy shareable link ──
+      if (graphShareBtn) {
+        graphShareBtn.addEventListener('click', () => {
+          const { url, hash } = exportGraphStateToUrl();
+          try {
+            if (window.history && window.history.replaceState) {
+              window.history.replaceState(null, '', hash);
+            } else {
+              window.location.hash = hash;
+            }
+          } catch (_) {}
+
+          if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(url).then(() => {
+              showGraphToast('Link copied to clipboard!');
+            }).catch(() => {
+              prompt('Copy this link to share your graph:', url);
+            });
+          } else {
+            prompt('Copy this link to share your graph:', url);
+          }
+        });
+      }
+
+      // Close modal on Escape key
+      document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && graphTableModal && graphTableModal.style.display !== 'none') {
+          closeTableModal();
+        }
+      });
+
+      // Listen for hash change to update graph state if user navigates back/forward
+      window.addEventListener('hashchange', () => {
+        if (location.hash && location.hash.startsWith('#graph=')) {
+          importGraphStateFromUrl(location.hash);
+        }
+      });
 
       // ── Viewport + sampling range controls ──
       // x/y rows set the visible viewport bounds; t/θ rows set the sampling
@@ -1722,6 +2239,7 @@
     export { initGraph, renderGraph, handleGraphKeypad, addGraphExpression,
              renderGraphExprList, graphState, removeGraphExpression,
              toggleGraphExpression, validateExpression, parseGraphExpression,
-             exportGraph, loadGraphState, numericDerivative };
+             exportGraph, loadGraphState, numericDerivative,
+             openTableModal, exportGraphStateToUrl, importGraphStateFromUrl };
 
     // ═══════════════════════════════════════════════════════════════
