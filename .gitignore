@@ -39,3 +39,9 @@ _inject.js
 
 # ── GitHub Pages site folder (created by the Actions workflow) ──
 _site/
+
+# ── Local-only living & agent documentation (never release/commit) ──
+ARCHITECTURE.md
+AGENTS.md
+architecture.md
+agents.md
